@@ -19,8 +19,8 @@
   padding-top:env(safe-area-inset-top,0px);
   padding-bottom:env(safe-area-inset-bottom,0px);
 }
-:root:not([data-theme="light"]){
-  @media (prefers-color-scheme: dark){
+@media (prefers-color-scheme: dark){
+  :root:not([data-theme="light"]){
     --paper:#0F1712; --card:#16211B; --ink:#E8EFE9; --ink-2:#A9B8AE; --ink-3:#7E8F84;
     --line:#2A3A31; --line-2:#1E2C24;
     --green:#4CBF6C; --green-d:#7FD69A; --green-soft:#1B3325;
@@ -133,9 +133,8 @@ input[aria-invalid="true"]{border-color:var(--red);background:var(--red-soft)}
 table{border-collapse:collapse;width:100%;font-size:13.5px}
 th,td{padding:9px 12px;text-align:left;border-bottom:1px solid var(--line-2);vertical-align:top;white-space:nowrap}
 thead th{background:var(--green-d);color:#fff;font-weight:600;font-size:12.5px;position:sticky;top:0}
-:root[data-theme="dark"] thead th,
-:root:not([data-theme="light"]) thead th{color:#0F1712}
-@media (prefers-color-scheme: light){:root:not([data-theme="dark"]) thead th{color:#fff}}
+:root[data-theme="dark"] thead th{color:#0F1712}
+@media (prefers-color-scheme: dark){:root:not([data-theme="light"]) thead th{color:#0F1712}}
 tbody tr:last-child td{border-bottom:0}
 tbody tr:hover{background:var(--line-2)}
 td.num,th.num{text-align:right;font-variant-numeric:tabular-nums}
@@ -157,7 +156,16 @@ tfoot td{font-weight:700;background:var(--line-2);border-top:2px solid var(--lin
 
 .tools{display:flex;flex-wrap:wrap;gap:10px;align-items:center;margin:0 0 16px}
 .tools input[type=text]{flex:1;min-width:160px}
-.tools input[type=month],.tools select{width:auto;min-width:150px}
+.tools input[type=month],.tools input[type=date],.tools select{width:auto;min-width:150px}
+.formgrid{display:grid;grid-template-columns:repeat(auto-fill,minmax(150px,1fr));gap:0 12px}
+.formgrid .field{margin-bottom:12px}
+.formgrid .span2{grid-column:span 2}
+.formgrid .span3{grid-column:span 3}
+@media (max-width:560px){.formgrid .span2,.formgrid .span3{grid-column:1/-1}}
+.block.entry{background:var(--card);border:1px solid var(--line);border-radius:14px;padding:16px 16px 14px}
+table.report td.grp{background:var(--line-2);vertical-align:middle}
+table.report tr.grp-first td{border-top:2px solid var(--line)}
+table.report tbody tr:first-child td{border-top:0}
 
 .empty{border:1px dashed var(--line);border-radius:12px;padding:32px 22px;text-align:center;color:var(--ink-3);font-size:14px;line-height:1.55}
 .empty b{display:block;color:var(--ink);font-size:15.5px;font-weight:600;margin:0 0 6px}
@@ -275,7 +283,7 @@ var RESULT_FIELDS = [
 ];
 
 /* ============ состояние ============ */
-var S = { leads:[], deals:[], tlog:[], results:{}, ovr:{} };
+var S = { leads:[], deals:[], tlog:[], daily:[], results:{}, ovr:{} };
 var LS = "sebiston.sales.v2";
 var LS_MGR = "sebiston.mgr";
 var db=null, userCap=null, dlCap=null;
@@ -293,6 +301,7 @@ function restore(){
       S.tlog  = Array.isArray(o.tlog)?o.tlog:[];
       S.results = o.results && typeof o.results==="object" ? o.results : {};
       S.ovr = o.ovr && typeof o.ovr==="object" ? o.ovr : {};
+      S.daily = Array.isArray(o.daily)?o.daily:[];
     }
   }catch(e){}
 }
@@ -674,31 +683,63 @@ function initLeadPanel(root, mode){
 }
 
 /* ==================================================================
+   ОБЩЕЕ ДЛЯ ВВОДА СДЕЛОК
+   ================================================================== */
+function saveDeal(rec){
+  S.deals.unshift(rec); persist(); lsSet(LS_MGR, rec.mgr);
+  push("deals", rec.id, rec);
+}
+function delDeal(id){
+  var i=S.deals.findIndex(function(x){return x.id===id;});
+  if(i<0) return false;
+  S.deals.splice(i,1); persist(); drop("deals",id); return true;
+}
+/* площадь + (цена за м² ИЛИ общая сумма). Итог можно вписать сразу — как в отчётах менеджеров */
+function bindMoney(root){
+  var manual=false;
+  function upd(src){
+    var a=num(fv(root,"area")), p=num(fv(root,"price"));
+    if(src==="total"){ manual = fv(root,"total")!==""; }
+    if(src==="price"){ manual=false; }
+    if(!manual){ f(root,"total").value = (a&&p) ? String(Math.round(a*p*100)/100) : ""; }
+    var t=num(fv(root,"total"));
+    var hint=f(root,"priceHint");
+    if(hint) hint.textContent = (manual && a && t) ? "≈ "+Math.round(t/a).toLocaleString("ru-RU")+" $ за м²" : "";
+    var paid=f(root,"paid"), rest=f(root,"rest");
+    if(rest) rest.textContent = money(t - (paid?num(paid.value):0));
+  }
+  ["area","price","total","paid"].forEach(function(n){
+    var e=f(root,n); if(e) e.addEventListener("input", function(){ upd(n); });
+  });
+  return { reset:function(){ manual=false; upd(); }, upd:upd };
+}
+
+/* ==================================================================
    ВКЛАДКА 3 · ПРОДАЖИ
    ================================================================== */
 function initSales(root){
   root.innerHTML =
-  '<p class="lede">Реестр из «Шаблона для менеджеров». <b>Общая сумма и остаток считаются сами</b> — площадь × цена за м², минус внесённое. Вписывать итог руками нельзя, и это не придирка: в августовском файле в строке одного менеджера 4 суммы дали 371 620 $, а записано было 372 620 $.</p>'+
+  '<p class="lede">Реестр из «Шаблона для менеджеров». Можно вписать <b>цену за м²</b> — сумма посчитается, или сразу <b>общую сумму</b>, как в вашем итоговом отчёте — тогда цена за м² покажется подсказкой.</p>'+
   '<div class="cols"><div class="formside">'+
-    '<div class="block"><div class="block-h"><h2>Объект</h2></div>'+
-      '<div class="field"><label class="lbl">Жилой комплекс <span class="req">•</span></label>'+chipsHTML("obj", OBJECTS, "")+
+    '<div class="block"><div class="block-h"><h2>Квартира</h2></div>'+
+      '<div class="field"><label class="lbl">Объект <span class="req">•</span></label>'+chipsHTML("obj", OBJECTS, "")+
         '<p class="err" data-f="e-obj" hidden>Выберите объект</p></div>'+
       '<div class="row"><div class="field"><label class="lbl">Блок</label><input type="text" data-f="block" placeholder="А"></div>'+
-      '<div class="field"><label class="lbl">Этаж</label><input type="number" data-f="floor" min="0" inputmode="numeric"></div></div>'+
-      '<div class="row"><div class="field"><label class="lbl">Площадь, м² <span class="req">•</span></label><input type="number" data-f="area" min="0" step="0.01" inputmode="decimal"></div>'+
-      '<div class="field"><label class="lbl">Цена за м², $ <span class="req">•</span></label><input type="number" data-f="price" min="0" step="1" inputmode="numeric"></div></div>'+
-      '<p class="err" data-f="e-num" hidden>Нужны площадь и цена за м²</p>'+
+      '<div class="field"><label class="lbl">Этаж</label><input type="number" data-f="floor" min="0" inputmode="numeric"></div>'+
+      '<div class="field"><label class="lbl">Площадь, м² <span class="req">•</span></label><input type="number" data-f="area" min="0" step="0.01" inputmode="decimal"></div></div>'+
     '</div>'+
-    '<div class="calc"><span class="k">Общая сумма</span><span class="v" data-f="total">0 $</span></div>'+
     '<div class="block"><div class="block-h"><h2>Оплата</h2></div>'+
       '<div class="field"><label class="lbl">Метод покупки</label>'+chipsHTML("method", METHODS, "")+'</div>'+
+      '<div class="row"><div class="field"><label class="lbl">Цена за м², $</label><input type="number" data-f="price" min="0" step="1" inputmode="numeric"></div>'+
+      '<div class="field"><label class="lbl">Общая сумма, $ <span class="req">•</span></label><input type="number" data-f="total" min="0" step="1" inputmode="numeric">'+
+        '<p class="hint" data-f="priceHint"></p></div></div>'+
+      '<p class="err" data-f="e-num" hidden>Нужны площадь и сумма (или цена за м²)</p>'+
       '<div class="row"><div class="field"><label class="lbl">Внесено, $</label><input type="number" data-f="paid" min="0" step="1" inputmode="numeric"></div>'+
       '<div class="field"><label class="lbl">Срок покупки</label><input type="text" data-f="term" placeholder="36 мес / до 30.09"></div></div>'+
       '<div class="calc"><span class="k">Остаток</span><span class="v" data-f="rest">0 $</span></div>'+
     '</div>'+
     '<div class="block"><div class="block-h"><h2>Покупатель и статус</h2></div>'+
-      '<div class="field"><label class="lbl">ФИО покупателя <span class="req">•</span></label><input type="text" data-f="buyer">'+
-        '<p class="err" data-f="e-buyer" hidden>Укажите покупателя</p></div>'+
+      '<div class="field"><label class="lbl">ФИО покупателя</label><input type="text" data-f="buyer"></div>'+
       '<div class="field"><label class="lbl">Статус</label>'+chipsHTML("status", ["Бронь","Продажа"], "Продажа")+'</div>'+
       '<div class="field"><label class="lbl">Примечание</label><textarea data-f="note" placeholder="Например: остаток внесёт до конца месяца"></textarea></div>'+
     '</div>'+
@@ -718,65 +759,52 @@ function initSales(root){
   '</div></div>';
 
   bindChips(root);
-  f(root,"dt").value = todayISO();
-  f(root,"fmon").value = thisMonth();
-  var lastM = lsGet(LS_MGR); if(lastM) gset(root,"mgr",lastM);
+  var mon=bindMoney(root);
+  f(root,"dt").value=todayISO();
+  f(root,"fmon").value=thisMonth();
+  var lastM=lsGet(LS_MGR); if(lastM) gset(root,"mgr",lastM);
 
-  function calc(){
-    var t = num(fv(root,"area"))*num(fv(root,"price"));
-    var r = t - num(fv(root,"paid"));
-    f(root,"total").textContent = money(t);
-    f(root,"rest").textContent = money(r);
+  function summary(){
     var miss=[];
-    if(!fv(root,"buyer")) miss.push("покупателя");
     if(!gv(root,"obj")) miss.push("объект");
-    if(!num(fv(root,"area"))||!num(fv(root,"price"))) miss.push("площадь и цену");
+    if(!num(fv(root,"area"))||!num(fv(root,"total"))) miss.push("площадь и сумму");
     if(!gv(root,"mgr")) miss.push("менеджера");
-    f(root,"sum").textContent = miss.length ? "Заполните "+miss.join(", ") : money(t)+" · "+gv(root,"status");
+    f(root,"sum").textContent = miss.length ? "Заполните "+miss.join(", ") : money(num(fv(root,"total")))+" · "+gv(root,"status");
   }
-  ["area","price","paid","buyer"].forEach(function(n){ f(root,n).addEventListener("input", calc); });
-  root.addEventListener("chipchange", calc);
+  ["area","price","total"].forEach(function(n){ f(root,n).addEventListener("input", summary); });
+  root.addEventListener("chipchange", summary);
 
   function reset(keep){
-    ["block","floor","area","price","paid","term","buyer","note"].forEach(function(n){ f(root,n).value=""; });
+    ["block","floor","area","price","total","paid","term","buyer","note"].forEach(function(n){ f(root,n).value=""; });
     gset(root,"obj",""); gset(root,"method",""); gset(root,"status","Продажа");
     if(keep) gset(root,"mgr",keep);
-    f(root,"dt").value=todayISO(); calc();
+    f(root,"dt").value=todayISO(); mon.reset(); summary();
   }
 
   f(root,"save").addEventListener("click", function(){
     var ok=true, first=null;
     var gO=root.querySelector('[data-g="obj"]'), gM=root.querySelector('[data-g="mgr"]');
-    if(!fv(root,"buyer")){ f(root,"buyer").setAttribute("aria-invalid","true"); f(root,"e-buyer").hidden=false; ok=false; first=f(root,"buyer"); }
-    else { f(root,"buyer").setAttribute("aria-invalid","false"); f(root,"e-buyer").hidden=true; }
-    if(!gv(root,"obj")){ gO.classList.add("invalid"); f(root,"e-obj").hidden=false; ok=false; first=first||gO; }
+    if(!gv(root,"obj")){ gO.classList.add("invalid"); f(root,"e-obj").hidden=false; ok=false; first=gO; }
     else { gO.classList.remove("invalid"); f(root,"e-obj").hidden=true; }
-    if(!num(fv(root,"area"))||!num(fv(root,"price"))){ f(root,"e-num").hidden=false; ok=false; first=first||f(root,"area"); }
+    if(!num(fv(root,"area"))||!num(fv(root,"total"))){ f(root,"e-num").hidden=false; ok=false; first=first||f(root,"area"); }
     else f(root,"e-num").hidden=true;
     if(!gv(root,"mgr")){ gM.classList.add("invalid"); f(root,"e-mgr").hidden=false; ok=false; first=first||gM; }
     else { gM.classList.remove("invalid"); f(root,"e-mgr").hidden=true; }
-    if(!ok){ if(first){ first.scrollIntoView({block:"center",behavior:"smooth"}); } toast("Не хватает данных"); return; }
-
-    var a=num(fv(root,"area")), p=num(fv(root,"price"));
+    if(!ok){ if(first) first.scrollIntoView({block:"center",behavior:"smooth"}); toast("Не хватает данных"); return; }
+    var a=num(fv(root,"area")), t=num(fv(root,"total")), pd=num(fv(root,"paid"));
     var rec={ id:uid(), date:f(root,"dt").value, mgr:gv(root,"mgr"), buyer:fv(root,"buyer"),
       object:gv(root,"obj"), block:fv(root,"block"), floor:fv(root,"floor"),
-      area:a, price:p, total:a*p, paid:num(fv(root,"paid")), rest:a*p-num(fv(root,"paid")),
+      area:a, price:num(fv(root,"price")) || (a? t/a : 0), total:t, paid:pd, rest:t-pd,
       method:gv(root,"method"), term:fv(root,"term"), status:gv(root,"status")||"Продажа",
       note:fv(root,"note"), createdAt:new Date().toISOString() };
-    S.deals.unshift(rec); persist(); lsSet(LS_MGR, rec.mgr);
-    renderList(); reset(rec.mgr);
+    saveDeal(rec); renderList(); reset(rec.mgr);
     toast("Сделка записана: "+money(rec.total));
-    push("deals", rec.id, rec);
   });
   f(root,"clear").addEventListener("click", function(){ reset(lsGet(LS_MGR)||""); toast("Форма очищена"); });
 
   function pick(){
-    var m=f(root,"fm").value, mon=f(root,"fmon").value;
-    return S.deals.filter(function(d){
-      if(m && d.mgr!==m) return false;
-      if(mon && (d.date||"").slice(0,7)!==mon) return false;
-      return true;
-    });
+    var m=f(root,"fm").value, mo=f(root,"fmon").value;
+    return S.deals.filter(function(d){ return (!m||d.mgr===m) && (!mo||(d.date||"").slice(0,7)===mo); });
   }
   f(root,"fm").addEventListener("change", renderList);
   f(root,"fmon").addEventListener("change", renderList);
@@ -784,7 +812,7 @@ function initSales(root){
     var rows=pick(); if(!rows.length){ toast("Нечего выгружать"); return; }
     var head=["№","Дата","Менеджер","Покупатель","Объект","Блок","Этаж","Площадь м²","Цена за м²","Общая сумма","Внесено","Остаток","Метод покупки","Срок","Статус","Примечание"];
     download("sebiston-prodazhi-"+todayISO()+".csv", csvText(head, rows.map(function(d,i){
-      return [i+1,d.date,d.mgr,d.buyer,d.object,d.block,d.floor,d.area,d.price,d.total,d.paid,d.rest,d.method,d.term,d.status,d.note];
+      return [i+1,d.date,d.mgr,d.buyer,d.object,d.block,d.floor,d.area,Math.round(d.price),d.total,d.paid,d.rest,d.method,d.term,d.status,d.note];
     })));
   });
 
@@ -793,43 +821,34 @@ function initSales(root){
     var tot=rows.reduce(function(s,d){return s+d.total;},0);
     var paid=rows.reduce(function(s,d){return s+d.paid;},0);
     var m2=rows.reduce(function(s,d){return s+d.area;},0);
-    var bron=rows.filter(function(d){return d.status==="Бронь";}).length;
     f(root,"stats").innerHTML =
       '<div class="stat"><div class="n">'+rows.length+'</div><div class="t">сделок</div></div>'+
-      '<div class="stat"><div class="n">'+bron+'</div><div class="t">из них броней</div></div>'+
       '<div class="stat"><div class="n">'+(Math.round(m2*100)/100).toLocaleString("ru-RU")+'</div><div class="t">м²</div></div>'+
       '<div class="stat money"><div class="n">'+money(tot)+'</div><div class="t">общая сумма</div></div>'+
       '<div class="stat"><div class="n">'+money(tot-paid)+'</div><div class="t">остаток</div></div>';
     var w=f(root,"tblw");
-    if(!rows.length){
-      if(w.classList.contains("tbl-wrap")){ var e=el('<div class="empty" data-f="tblw"><b>Сделок нет</b>За выбранный месяц ничего не записано.</div>'); w.parentNode.replaceChild(e,w); }
-      else w.innerHTML='<b>Сделок нет</b>За выбранный месяц ничего не записано.';
-      return;
-    }
-    if(!w.classList.contains("tbl-wrap")){ var nw=el('<div class="tbl-wrap" data-f="tblw"></div>'); w.parentNode.replaceChild(nw,w); w=nw; }
+    if(!rows.length){ w.innerHTML='<div class="empty" style="border:0"><b>Сделок нет</b>За выбранный месяц ничего не записано.</div>'; return; }
     w.innerHTML='<table><thead><tr><th>Дата</th><th>Покупатель</th><th>Объект</th><th>Блок</th><th class="num">Этаж</th>'+
       '<th class="num">м²</th><th class="num">$/м²</th><th class="num">Сумма</th><th class="num">Внесено</th><th class="num">Остаток</th>'+
-      '<th>Метод</th><th>Срок</th><th>Статус</th><th>Менеджер</th><th></th></tr></thead><tbody>'+
+      '<th>Метод</th><th>Статус</th><th>Менеджер</th><th></th></tr></thead><tbody>'+
       rows.map(function(d){
-        return '<tr><td>'+esc(fmtDate(d.date))+'</td><td>'+esc(d.buyer)+'</td><td>'+esc(d.object)+'</td><td>'+esc(d.block||"—")+'</td>'+
+        return '<tr><td>'+esc(fmtDate(d.date))+'</td><td>'+esc(d.buyer||"—")+'</td><td>'+esc(d.object)+'</td><td>'+esc(d.block||"—")+'</td>'+
         '<td class="num">'+esc(d.floor||"—")+'</td><td class="num">'+d.area.toLocaleString("ru-RU")+'</td>'+
-        '<td class="num">'+d.price.toLocaleString("ru-RU")+'</td><td class="num">'+money(d.total)+'</td>'+
+        '<td class="num">'+Math.round(d.price).toLocaleString("ru-RU")+'</td><td class="num">'+money(d.total)+'</td>'+
         '<td class="num">'+money(d.paid)+'</td><td class="num">'+money(d.rest)+'</td>'+
-        '<td>'+esc(d.method||"—")+'</td><td>'+esc(d.term||"—")+'</td>'+
-        '<td><span class="badge '+(d.status==="Бронь"?"bron":"")+'">'+esc(d.status)+'</span></td>'+
+        '<td>'+esc(d.method||"—")+'</td><td><span class="badge '+(d.status==="Бронь"?"bron":"")+'">'+esc(d.status)+'</span></td>'+
         '<td>'+esc(d.mgr)+'</td><td><button class="lnk" data-del="'+d.id+'">удалить</button></td></tr>';
       }).join("")+'</tbody><tfoot><tr><td colspan="5">Итого '+rows.length+'</td>'+
       '<td class="num">'+(Math.round(m2*100)/100).toLocaleString("ru-RU")+'</td><td></td>'+
       '<td class="num">'+money(tot)+'</td><td class="num">'+money(paid)+'</td><td class="num">'+money(tot-paid)+'</td>'+
-      '<td colspan="5"></td></tr></tfoot></table>';
+      '<td colspan="4"></td></tr></tfoot></table>';
     w.onclick=function(ev){
       var d=ev.target.closest("[data-del]"); if(!d) return;
-      var i=S.deals.findIndex(function(x){return x.id===d.dataset.del;});
-      if(i>=0){ var id=S.deals[i].id; S.deals.splice(i,1); persist(); drop("deals",id); renderList(); toast("Сделка удалена"); }
+      if(delDeal(d.dataset.del)){ renderList(); toast("Сделка удалена"); }
     };
   }
-  root._render = renderList;
-  calc(); renderList();
+  root._render=renderList;
+  reset(lastM||""); renderList();
 }
 
 /* ==================================================================
@@ -837,51 +856,40 @@ function initSales(root){
    ================================================================== */
 function initTime(root){
   root.innerHTML =
-  '<p class="lede">Перенос вашего xlsx. Вводится начало и конец действия — <b>длительность и доля по категориям считаются сами</b>. Результаты за день внизу берутся из уже введённых звонков и сделок, руками их дублировать не нужно.</p>'+
+  '<p class="lede">Перенос вашего xlsx. Вводите начало и конец действия — <b>длительность и сводка по категориям считаются сами</b>. «Результаты за день» заполняются руками, как в Excel; если по вкладкам «Звонки» и «Продажи» что-то уже есть — система подставит свою цифру подсказкой.</p>'+
   '<div class="tools">'+
     '<select data-f="mgr" aria-label="Менеджер">'+MGRS.map(function(m){return '<option>'+esc(m)+'</option>';}).join("")+'</select>'+
     '<input type="date" data-f="dt" aria-label="Дата">'+
     '<button class="btn btn-ghost btn-sm" data-f="exp" type="button">Выгрузить в Excel</button>'+
   '</div>'+
   '<div class="warn" data-f="warn" hidden><span aria-hidden="true">⚑</span><div data-f="warnText"></div></div>'+
-  '<div class="cols" style="grid-template-columns:minmax(0,1fr) minmax(0,340px)">'+
-    '<div>'+
-      '<div class="block-h"><h2>Действия за день</h2><span class="note">строки сортируются по времени</span></div>'+
-      '<div class="tbl-wrap" data-f="tblw"></div>'+
-      '<div class="block" style="margin-top:18px"><div class="block-h"><h2>Добавить действие</h2></div>'+
-        '<div class="row"><div class="field"><label class="lbl">Начало</label><input type="time" data-f="st"></div>'+
-        '<div class="field"><label class="lbl">Конец</label><input type="time" data-f="en"></div></div>'+
-        '<div class="field"><label class="lbl">Категория</label><select data-f="cat">'+CATS.map(function(c){return '<option>'+esc(c)+'</option>';}).join("")+'</select></div>'+
-        '<div class="field"><label class="lbl">Что делал</label><input type="text" data-f="act" placeholder="Обработка новых лидов"></div>'+
-        '<div class="field"><label class="lbl">Результат</label><input type="text" data-f="res" placeholder="Обработал 6 лидов"></div>'+
-        '<div class="actions"><div class="sum" data-f="sum"></div><button class="btn btn-main" data-f="add" type="button">Добавить</button></div>'+
-      '</div>'+
+  '<div class="block"><div class="block-h"><h2>Добавить действие</h2></div>'+
+    '<div class="formgrid">'+
+      '<div class="field"><label class="lbl">Начало</label><input type="time" data-f="st"></div>'+
+      '<div class="field"><label class="lbl">Конец</label><input type="time" data-f="en"></div>'+
+      '<div class="field span2"><label class="lbl">Категория</label><select data-f="cat">'+CATS.map(function(c){return '<option>'+esc(c)+'</option>';}).join("")+'</select></div>'+
+      '<div class="field span2"><label class="lbl">Действие</label><input type="text" data-f="act" placeholder="Обработка новых лидов"></div>'+
+      '<div class="field span2"><label class="lbl">Результат</label><input type="text" data-f="res" placeholder="Обработал 6 лидов"></div>'+
+      '<div class="field span2"><label class="lbl">Примечание</label><input type="text" data-f="nt"></div>'+
     '</div>'+
-    '<div>'+
-      '<div class="block-h"><h2>Сводка времени</h2></div>'+
-      '<div class="tbl-wrap" data-f="sumw"></div>'+
-      '<div class="block-h" style="margin-top:22px"><h2>Результаты за день</h2><span class="note">из введённых данных</span></div>'+
-      '<div class="tbl-wrap" data-f="resw"></div>'+
-    '</div>'+
+    '<div class="actions"><div class="sum" data-f="sum"></div><button class="btn btn-main" data-f="add" type="button">Добавить строку</button></div>'+
+  '</div>'+
+  '<div class="block-h"><h2>Действия за день</h2><span class="note">строки сортируются по времени</span></div>'+
+  '<div class="tbl-wrap" data-f="tblw"></div>'+
+  '<div class="cols" style="margin-top:24px;grid-template-columns:minmax(0,1fr) minmax(0,1fr)">'+
+    '<div><div class="block-h"><h2>Сводка времени за день</h2></div><div class="tbl-wrap" data-f="sumw"></div></div>'+
+    '<div><div class="block-h"><h2>Результаты за день</h2><span class="note">вводятся руками</span></div><div class="tbl-wrap" data-f="resw"></div></div>'+
   '</div>';
 
   f(root,"dt").value=todayISO();
   var lastM=lsGet(LS_MGR); if(lastM && MGRS.indexOf(lastM)>=0) f(root,"mgr").value=lastM;
 
   function ctx(){ return { d:f(root,"dt").value, m:f(root,"mgr").value }; }
+  function rkey(){ var c=ctx(); return c.d+"|"+c.m; }
   function rows(){
     var c=ctx();
     return S.tlog.filter(function(t){return t.date===c.d && t.mgr===c.m;})
       .sort(function(a,b){ return (mins(a.start)||0)-(mins(b.start)||0); });
-  }
-
-  function overlapCheck(list){
-    var bad=[];
-    for(var i=1;i<list.length;i++){
-      var prevEnd=mins(list[i-1].end), curStart=mins(list[i].start);
-      if(prevEnd!=null && curStart!=null && curStart<prevEnd) bad.push(list[i].start);
-    }
-    return bad;
   }
 
   f(root,"add").addEventListener("click", function(){
@@ -889,35 +897,47 @@ function initTime(root){
     if(!st||!en){ toast("Укажите начало и конец"); return; }
     var dur=mins(en)-mins(st);
     if(dur<=0){ toast("Конец должен быть позже начала"); return; }
-    var rec={ id:uid(), date:c.d, mgr:c.m, start:st, end:en, dur:dur,
-      cat:f(root,"cat").value, act:fv(root,"act"), res:fv(root,"res"), createdAt:new Date().toISOString() };
+    var rec={ id:uid(), date:c.d, mgr:c.m, start:st, end:en, dur:dur, cat:f(root,"cat").value,
+      act:fv(root,"act"), res:fv(root,"res"), nt:fv(root,"nt"), createdAt:new Date().toISOString() };
     S.tlog.push(rec); persist(); push("tlog",rec.id,rec);
-    f(root,"st").value=en; f(root,"en").value="";
-    f(root,"act").value=""; f(root,"res").value="";
+    f(root,"st").value=en; f(root,"en").value=""; f(root,"act").value=""; f(root,"res").value=""; f(root,"nt").value="";
     render(); toast("Добавлено: "+hhmm(dur));
   });
-
   f(root,"dt").addEventListener("change", render);
   f(root,"mgr").addEventListener("change", function(){ lsSet(LS_MGR,this.value); render(); });
+
+  function autoResults(){
+    var c=ctx();
+    var L=S.leads.filter(function(l){return l.date===c.d && l.mgr===c.m;});
+    var D=S.deals.filter(function(d){return d.date===c.d && d.mgr===c.m;});
+    return { newLeads:L.length, worked:L.length, outCalls:L.filter(function(l){return l.kind==="call";}).length,
+      contacts:L.filter(function(l){return l.stage!=="Отказ";}).length, meetSet:L.filter(function(l){return l.meetDate;}).length,
+      meetHeld:L.filter(function(l){return l.meetHeld;}).length, shows:0, repeat:0,
+      bron:D.filter(function(d){return d.status==="Бронь";}).length, deals:D.filter(function(d){return d.status==="Продажа";}).length };
+  }
+  function resVal(k){ var r=S.results[rkey()]; return r && r[k]!==undefined && r[k]!=="" ? r[k] : ""; }
+
   f(root,"exp").addEventListener("click", function(){
-    var list=rows(); if(!list.length){ toast("Нечего выгружать"); return; }
-    var head=["№","Дата","Менеджер","Начало","Конец","Длительность, мин","Категория","Действие","Результат"];
-    download("sebiston-hronometrazh-"+ctx().d+".csv", csvText(head, list.map(function(t,i){
-      return [i+1,t.date,t.mgr,t.start,t.end,t.dur,t.cat,t.act,t.res];
-    })));
+    var list=rows(), c=ctx();
+    if(!list.length && !S.results[rkey()]){ toast("Нечего выгружать"); return; }
+    var body=list.map(function(t,i){ return [i+1,t.start,t.end,hhmm(t.dur),t.cat,t.act,t.res,t.nt||""]; });
+    body.push([]); body.push(["РЕЗУЛЬТАТЫ ЗА ДЕНЬ"]);
+    RESULT_FIELDS.forEach(function(p){ body.push([p[1], resVal(p[0])]); });
+    download("sebiston-hronometrazh-"+c.m+"-"+c.d+".csv",
+      csvText(["Менеджер: "+c.m+" · Дата: "+c.d],[["№","Начало","Конец","Длительность","Категория","Действие","Результат","Примечание"]].concat(body)));
   });
 
   function render(){
-    var list=rows(), c=ctx();
+    var list=rows();
     var w=f(root,"tblw");
     if(!list.length){
-      w.innerHTML='<div class="empty" style="border:0"><b>День пустой</b>Добавьте первое действие — дальше начало следующего подставится автоматически.</div>';
+      w.innerHTML='<div class="empty" style="border:0"><b>День пустой</b>Добавьте первое действие — начало следующего подставится само.</div>';
     } else {
-      w.innerHTML='<table><thead><tr><th class="num">#</th><th>Начало</th><th>Конец</th><th class="num">Длительность</th><th>Категория</th><th>Действие</th><th>Результат</th><th></th></tr></thead><tbody>'+
+      w.innerHTML='<table><thead><tr><th class="num">№</th><th>Начало</th><th>Конец</th><th class="num">Длительность</th><th>Категория</th><th>Действие</th><th>Результат</th><th>Примечание</th><th></th></tr></thead><tbody>'+
         list.map(function(t,i){
           return '<tr><td class="num">'+(i+1)+'</td><td>'+esc(t.start)+'</td><td>'+esc(t.end)+'</td>'+
           '<td class="num">'+hhmm(t.dur)+'</td><td class="wrap">'+esc(t.cat)+'</td>'+
-          '<td class="wrap">'+esc(t.act||"—")+'</td><td class="wrap">'+esc(t.res||"—")+'</td>'+
+          '<td class="wrap">'+esc(t.act||"—")+'</td><td class="wrap">'+esc(t.res||"—")+'</td><td class="wrap">'+esc(t.nt||"—")+'</td>'+
           '<td><button class="lnk" data-del="'+t.id+'">удалить</button></td></tr>';
         }).join("")+'</tbody></table>';
       w.onclick=function(ev){
@@ -932,40 +952,37 @@ function initTime(root){
     list.forEach(function(t){ by[t.cat]=(by[t.cat]||0)+t.dur; });
     var idle=IDLE.reduce(function(s,k){return s+(by[k]||0);},0);
     f(root,"sumw").innerHTML='<table><thead><tr><th>Категория</th><th class="num">Время</th><th>Доля</th></tr></thead><tbody>'+
-      CATS.filter(function(k){return by[k]>0;}).map(function(k){
-        var p = total? Math.round(by[k]/total*100):0;
+      CATS.map(function(k){
+        var p = total? Math.round(by[k]/total*1000)/10 : 0;
         var warn = IDLE.indexOf(k)>=0 ? " warnc":"";
         return '<tr><td class="wrap">'+esc(k)+'</td><td class="num">'+hhmm(by[k])+'</td>'+
-          '<td><span class="bar-track"><span class="bar-fill'+warn+'" style="width:'+p+'%"></span></span> '+p+'%</td></tr>';
-      }).join("")+'</tbody><tfoot><tr><td>Итого</td><td class="num">'+hhmm(total)+'</td><td></td></tr></tfoot></table>';
+          '<td><span class="bar-track"><span class="bar-fill'+warn+'" style="width:'+p+'%"></span></span> '+p.toLocaleString("ru-RU")+'%</td></tr>';
+      }).join("")+'</tbody><tfoot><tr><td>Итого</td><td class="num">'+hhmm(total)+'</td><td>'+(total?"100%":"")+'</td></tr></tfoot></table>';
 
-    var bad=overlapCheck(list);
-    if(bad.length || (total && idle/total>0.3)){
-      var msgs=[];
-      if(bad.length) msgs.push("Строки пересекаются по времени: "+bad.join(", ")+". Одна минута посчитана дважды.");
-      if(total && idle/total>0.3) msgs.push("Простой и перерывы занимают "+Math.round(idle/total*100)+"% дня.");
-      f(root,"warnText").innerHTML=msgs.map(esc).join("<br>");
-      f(root,"warn").hidden=false;
-    } else f(root,"warn").hidden=true;
+    var bad=[];
+    for(var i=1;i<list.length;i++){ if(mins(list[i].start)<mins(list[i-1].end)) bad.push(list[i].start); }
+    var msgs=[];
+    if(bad.length) msgs.push("Строки пересекаются по времени: "+bad.join(", ")+" — одни и те же минуты посчитаны дважды.");
+    if(total && idle/total>0.3) msgs.push("Простой и перерывы — "+Math.round(idle/total*100)+"% дня.");
+    if(msgs.length){ f(root,"warnText").innerHTML=msgs.map(esc).join("<br>"); f(root,"warn").hidden=false; }
+    else f(root,"warn").hidden=true;
 
-    var dayLeads=S.leads.filter(function(l){return l.date===c.d && l.mgr===c.m;});
-    var dayDeals=S.deals.filter(function(d){return d.date===c.d && d.mgr===c.m;});
-    var auto={
-      worked: dayLeads.length,
-      newLeads: dayLeads.filter(function(l){return l.kind==="call"||l.kind==="office";}).length,
-      meetSet: dayLeads.filter(function(l){return l.meetDate;}).length,
-      meetHeld: dayLeads.filter(function(l){return l.meetHeld;}).length,
-      bron: dayDeals.filter(function(d){return d.status==="Бронь";}).length,
-      deals: dayDeals.filter(function(d){return d.status==="Продажа";}).length,
-      outCalls: dayLeads.filter(function(l){return l.kind==="call";}).length,
-      contacts: dayLeads.filter(function(l){return l.stage!=="Отказ";}).length,
-      shows: dayLeads.filter(function(l){return l.meetHeld;}).length,
-      repeat: 0
-    };
+    var auto=autoResults();
     f(root,"resw").innerHTML='<table><tbody>'+RESULT_FIELDS.map(function(p){
-      return '<tr><td class="wrap">'+esc(p[1])+'</td><td class="num">'+(auto[p[0]]||0)+'</td></tr>';
+      var v=resVal(p[0]), a=auto[p[0]]||0;
+      var hint = a && String(a)!==String(v) ? '<span class="auto">в системе: '+a+'</span>' : '';
+      return '<tr><td class="wrap">'+esc(p[1])+'</td><td class="num has-auto" style="width:110px">'+
+        '<input class="cell n" data-r="'+p[0]+'" inputmode="numeric" value="'+esc(v)+'" placeholder="0" aria-label="'+esc(p[1])+'">'+hint+'</td></tr>';
     }).join("")+'</tbody></table>';
-    f(root,"sum").textContent = total ? "За день записано "+hhmm(total) : "Ни одного действия";
+    f(root,"resw").onchange=function(ev){
+      var i=ev.target; if(!i.dataset || !i.dataset.r) return;
+      var k=rkey(); var r=S.results[k]||(S.results[k]={});
+      var v=i.value.trim();
+      if(v==="") delete r[i.dataset.r]; else r[i.dataset.r]=num(v);
+      persist(); push("results", k.replace(/[^0-9A-Za-z_\-.]/g,"_")+"_"+MGRS.indexOf(ctx().m), {id:k, map:r});
+      render();
+    };
+    f(root,"sum").textContent = total ? "За день записано "+hhmm(total)+" в "+list.length+" строках" : "Ни одного действия";
   }
   root._render=render;
   render();
@@ -975,6 +992,7 @@ function initTime(root){
    ОБЩЕЕ ДЛЯ ОТЧЁТОВ
    ================================================================== */
 function inMonth(iso, mon){ return !mon || (iso||"").slice(0,7)===mon; }
+function namesCount(s){ return (s||"").split(/[,;\n]+/).map(function(x){return x.trim();}).filter(Boolean).length; }
 function leadAgg(list, deals){
   var rej = list.filter(function(l){return l.stage==="Отказ";});
   var causes={};
@@ -985,111 +1003,172 @@ function leadAgg(list, deals){
     worked: list.length,
     set: list.filter(function(l){return l.meetDate;}).length,
     held: list.filter(function(l){return l.meetHeld;}).length,
-    rej: rej.length,
-    causes: causeText,
+    rej: rej.length, causes: causeText,
     bron: deals.filter(function(d){return d.status==="Бронь";}).length,
     sold: deals.filter(function(d){return d.status==="Продажа";}).length,
     money: deals.filter(function(d){return d.status==="Продажа";}).reduce(function(s,d){return s+d.total;},0)
   };
 }
-
-/* ==================================================================
-   ВКЛАДКА 5 · ЛИДЫ ПО ДНЯМ (один менеджер)
-   ================================================================== */
-function daysOfMonth(mon){
-  if(!mon) return [];
-  var y=parseInt(mon.slice(0,4),10), m=parseInt(mon.slice(5,7),10);
-  var last=new Date(y,m,0).getDate(), out=[];
-  for(var d=1;d<=last;d++) out.push(mon+"-"+pad(d));
-  return out;
+/* дневные отчёты менеджеров за месяц → те же поля, что у сводки */
+function dailyAgg(list){
+  return {
+    worked: list.reduce(function(s,r){return s+num(r.worked);},0),
+    set:    list.reduce(function(s,r){return s+num(r.set);},0),
+    held:   list.reduce(function(s,r){return s+num(r.held);},0),
+    rej:    list.reduce(function(s,r){return s+num(r.rej);},0),
+    causes: list.map(function(r){return r.rejReason;}).filter(Boolean).join("; "),
+    bron:   list.reduce(function(s,r){return s+namesCount(r.bronNames);},0),
+    sold:   list.reduce(function(s,r){return s+namesCount(r.soldNames);},0),
+    money:  0
+  };
 }
 
+/* ==================================================================
+   ВКЛАДКА 5 · ЛИДЫ ПО ДНЯМ — дневной отчёт менеджера, как у Нозии
+   ================================================================== */
 function initRDay(root){
   root.innerHTML =
-  '<p class="lede">Аналог дневного отчёта менеджера. Цифры считаются из вкладок «Звонки», «Офис» и «Продажи», но <b>любую ячейку можно перебить руками</b> — так переносятся июль и август, которых в системе нет.</p>'+
+  '<p class="lede">Дневной отчёт менеджера — те же колонки, что в «Отчёте по обработке лидов». <b>Бронь и продажи вписываются ФИО покупателей</b>, количество считается само по числу имён. Одна строка — один рабочий день.</p>'+
   '<div class="tools">'+
     '<select data-f="mgr" aria-label="Менеджер">'+MGRS.map(function(m){return '<option>'+esc(m)+'</option>';}).join("")+'</select>'+
     '<input type="month" data-f="mon" aria-label="Месяц">'+
-    '<label class="check" style="margin:0"><input type="checkbox" data-f="onlyData"> Только дни с записями</label>'+
     '<button class="btn btn-ghost btn-sm" data-f="exp" type="button">Выгрузить в Excel</button>'+
-  '</div>'+LEGEND+
-  '<div class="stats" data-f="stats"></div><div class="tbl-wrap" data-f="tblw"></div>';
+  '</div>'+
+  '<div class="block entry"><div class="block-h"><h2 data-f="formTitle">Новый день</h2><span class="note" data-f="sysHint"></span></div>'+
+    '<div class="formgrid">'+
+      '<div class="field"><label class="lbl">Дата <span class="req">•</span></label><input type="date" data-f="dt"></div>'+
+      '<div class="field"><label class="lbl">Обработано</label><input type="number" data-f="worked" min="0" inputmode="numeric" placeholder="0"></div>'+
+      '<div class="field"><label class="lbl">из них звонков</label><input type="number" data-f="calls" min="0" inputmode="numeric" placeholder="0"></div>'+
+      '<div class="field"><label class="lbl">комментариев / ответов</label><input type="number" data-f="comments" min="0" inputmode="numeric" placeholder="0"></div>'+
+      '<div class="field"><label class="lbl">Назначенные встречи</label><input type="number" data-f="set" min="0" inputmode="numeric" placeholder="0"></div>'+
+      '<div class="field"><label class="lbl">Проведено встреч</label><input type="number" data-f="held" min="0" inputmode="numeric" placeholder="0"></div>'+
+      '<div class="field span2"><label class="lbl">Комментарий к встречам</label><input type="text" data-f="heldNote" placeholder="например: 1 показ в Address"></div>'+
+      '<div class="field"><label class="lbl">Отказано</label><input type="number" data-f="rej" min="0" inputmode="numeric" placeholder="0"></div>'+
+      '<div class="field span3"><label class="lbl">Причина отказа</label><input type="text" data-f="rejReason" placeholder="например: высокая цена, нет нужной площади" list="rejlist"></div>'+
+      '<div class="field span3"><label class="lbl">Бронь — ФИО покупателей</label><input type="text" data-f="bronNames" placeholder="через запятую"><p class="hint" data-f="bronCnt"></p></div>'+
+      '<div class="field span3"><label class="lbl">Продажа — ФИО покупателей</label><input type="text" data-f="soldNames" placeholder="через запятую"><p class="hint" data-f="soldCnt"></p></div>'+
+      '<div class="field span3"><label class="lbl">Комментарий по продажам</label><input type="text" data-f="saleNote" placeholder="например: клиент внесёт завтра"></div>'+
+    '</div>'+
+    '<datalist id="rejlist">'+REJECTS.map(function(r){return '<option value="'+esc(r)+'"></option>';}).join("")+'</datalist>'+
+    '<p class="err" data-f="e-dt" hidden>Укажите дату</p>'+
+    '<div class="warn" data-f="heldWarn" hidden style="margin-top:12px"><span aria-hidden="true">⚑</span><div>Проведено встреч больше, чем назначено. Если встреча была без предварительной записи — укажите это в комментарии к встречам.</div></div>'+
+    '<div class="actions"><div class="sum" data-f="sum"></div>'+
+      '<button class="btn btn-ghost" data-f="clear" type="button">Очистить</button>'+
+      '<button class="btn btn-main" data-f="save" type="button">Сохранить день</button></div>'+
+  '</div>'+
+  '<div class="stats" data-f="stats"></div>'+
+  '<div class="tbl-wrap" data-f="tblw"></div>';
 
+  var editing=null;
   f(root,"mon").value=thisMonth();
+  f(root,"dt").value=todayISO();
   var lastM=lsGet(LS_MGR); if(lastM && MGRS.indexOf(lastM)>=0) f(root,"mgr").value=lastM;
-  f(root,"mgr").addEventListener("change", render);
-  f(root,"mon").addEventListener("change", render);
-  f(root,"onlyData").addEventListener("change", render);
 
-  function autoFor(dt){
-    var m=f(root,"mgr").value;
-    var L=S.leads.filter(function(l){return l.mgr===m && l.date===dt;});
-    var D=S.deals.filter(function(d){return d.mgr===m && d.date===dt;});
-    return leadAgg(L,D);
+  var FIELDS=["worked","calls","comments","set","held","heldNote","rej","rejReason","bronNames","soldNames","saleNote"];
+
+  function live(){
+    var b=namesCount(fv(root,"bronNames")), s=namesCount(fv(root,"soldNames"));
+    f(root,"bronCnt").textContent = b ? "броней: "+b : "";
+    f(root,"soldCnt").textContent = s ? "продаж: "+s : "";
+    f(root,"heldWarn").hidden = !(num(fv(root,"held"))>num(fv(root,"set")));
+    var d=f(root,"dt").value, m=f(root,"mgr").value;
+    var L=S.leads.filter(function(l){return l.mgr===m && l.date===d;});
+    f(root,"sysHint").textContent = L.length ? "во вкладках «Звонки»/«Офис» за этот день: "+L.length+" контакт(ов)" : "";
+    f(root,"sum").textContent = d ? fmtDate(d)+(editing?" · правка":"") : "Укажите дату";
   }
-  function hasSource(dt){
-    var m=f(root,"mgr").value;
-    return S.leads.some(function(l){return l.mgr===m&&l.date===dt;}) || S.deals.some(function(d){return d.mgr===m&&d.date===dt;});
+  FIELDS.concat(["dt"]).forEach(function(n){ f(root,n).addEventListener("input", live); });
+  f(root,"dt").addEventListener("change", function(){
+    var ex=find(f(root,"mgr").value, f(root,"dt").value);
+    if(ex && (!editing || editing!==ex.id)){ load(ex); toast("За этот день отчёт уже есть — открыт для правки"); }
+    live();
+  });
+  f(root,"mgr").addEventListener("change", function(){ lsSet(LS_MGR,this.value); reset(); render(); });
+  f(root,"mon").addEventListener("change", render);
+
+  function find(m,d){ return S.daily.find(function(r){return r.mgr===m && r.date===d;}); }
+  function load(r){
+    editing=r.id; f(root,"dt").value=r.date;
+    FIELDS.forEach(function(n){ f(root,n).value = r[n]==null ? "" : r[n]; });
+    f(root,"formTitle").textContent="Правка дня "+fmtDate(r.date);
+    live();
   }
+  function reset(){
+    editing=null;
+    FIELDS.forEach(function(n){ f(root,n).value=""; });
+    f(root,"dt").value=todayISO(); f(root,"formTitle").textContent="Новый день"; f(root,"e-dt").hidden=true;
+    live();
+  }
+
+  f(root,"save").addEventListener("click", function(){
+    var d=f(root,"dt").value, m=f(root,"mgr").value;
+    if(!d){ f(root,"e-dt").hidden=false; toast("Укажите дату"); return; }
+    var ex=find(m,d);
+    var rec = ex && (!editing || editing===ex.id) ? ex : null;
+    if(!rec){
+      if(editing){ var old=S.daily.find(function(x){return x.id===editing;}); if(old) rec=old; }
+      if(!rec){ rec={ id:uid(), createdAt:new Date().toISOString() }; S.daily.push(rec); }
+    }
+    rec.mgr=m; rec.date=d;
+    FIELDS.forEach(function(n){ var v=fv(root,n); rec[n] = ["worked","calls","comments","set","held","rej"].indexOf(n)>=0 ? (v===""?"":num(v)) : v; });
+    persist(); lsSet(LS_MGR,m); push("daily",rec.id,rec);
+    f(root,"mon").value=d.slice(0,7);
+    toast((editing?"Исправлено: ":"Сохранено: ")+fmtDate(d));
+    reset(); render();
+  });
+  f(root,"clear").addEventListener("click", function(){ reset(); toast("Форма очищена"); });
+
   function rowsFor(){
-    var m=f(root,"mgr").value, mon=f(root,"mon").value;
-    var all=daysOfMonth(mon), only=f(root,"onlyData").checked;
-    return all.filter(function(dt){
-      if(!only) return true;
-      return hasSource(dt) || Object.keys(S.ovr).some(function(k){return k.indexOf(ovrKey("d",m,dt,""))===0;});
-    }).map(function(dt){
-      var a=autoFor(dt), p=ovrKey("d",m,dt,"");
-      return {
-        date:dt, auto:a, pref:p,
-        worked:effN(p+"worked",a.worked), set:effN(p+"set",a.set), held:effN(p+"held",a.held),
-        rej:effN(p+"rej",a.rej), causes:eff(p+"causes",a.causes),
-        bron:effN(p+"bron",a.bron), sold:effN(p+"sold",a.sold), money:effN(p+"money",a.money)
-      };
-    });
+    var m=f(root,"mgr").value, mo=f(root,"mon").value;
+    return S.daily.filter(function(r){return r.mgr===m && inMonth(r.date,mo);})
+      .sort(function(a,b){return a.date.localeCompare(b.date);});
   }
 
   f(root,"exp").addEventListener("click", function(){
     var rr=rowsFor(); if(!rr.length){ toast("Нечего выгружать"); return; }
-    var head=["Дата","Обработано","Назначенные встречи","Проведено встреч","Отказано","Причины отказа","Бронь","Продаж","Сумма продаж $"];
+    var head=["Дата","Обработано","Звонков","Комментариев","Назначенные встречи","Проведено встреч","Комментарий к встречам","Отказано","Причина отказа","Бронь (ФИО покупателей)","Броней","Продаж (ФИО покупателей)","Продаж","Комментарий по продажам"];
     download("sebiston-lidy-"+f(root,"mgr").value+"-"+f(root,"mon").value+".csv",
-      csvText(head, rr.map(function(r){return [r.date,r.worked,r.set,r.held,r.rej,r.causes,r.bron,r.sold,r.money];})));
+      csvText(head, rr.map(function(r){return [r.date,r.worked,r.calls,r.comments,r.set,r.held,r.heldNote,r.rej,r.rejReason,r.bronNames,namesCount(r.bronNames),r.soldNames,namesCount(r.soldNames),r.saleNote];})));
   });
 
   function render(){
-    var rr=rowsFor(), m=f(root,"mgr").value;
-    var T={worked:0,set:0,held:0,rej:0,bron:0,sold:0,money:0};
-    rr.forEach(function(r){ ["worked","set","held","rej","bron","sold","money"].forEach(function(k){ T[k]+=r[k]; }); });
-
+    var rr=rowsFor(), a=dailyAgg(rr);
     f(root,"stats").innerHTML=
-      '<div class="stat"><div class="n">'+T.worked+'</div><div class="t">обработано</div></div>'+
-      '<div class="stat"><div class="n">'+T.set+'</div><div class="t">встреч назначено</div></div>'+
-      '<div class="stat"><div class="n">'+T.held+'</div><div class="t">проведено</div></div>'+
-      '<div class="stat"><div class="n">'+T.rej+'</div><div class="t">отказов</div></div>'+
-      '<div class="stat money"><div class="n">'+money(T.money)+'</div><div class="t">продаж</div></div>';
-
+      '<div class="stat"><div class="n">'+rr.length+'</div><div class="t">рабочих дней</div></div>'+
+      '<div class="stat"><div class="n">'+a.worked+'</div><div class="t">обработано</div></div>'+
+      '<div class="stat"><div class="n">'+a.set+' / '+a.held+'</div><div class="t">встреч назначено / проведено</div></div>'+
+      '<div class="stat"><div class="n">'+a.rej+'</div><div class="t">отказов</div></div>'+
+      '<div class="stat hot"><div class="n">'+a.bron+'</div><div class="t">броней</div></div>'+
+      '<div class="stat money"><div class="n">'+a.sold+'</div><div class="t">продаж</div></div>';
     var w=f(root,"tblw");
-    if(!rr.length){ w.innerHTML='<div class="empty" style="border:0"><b>Дней нет</b>Выберите месяц или снимите галочку «Только дни с записями».</div>'; return; }
-    w.innerHTML='<table><thead><tr><th>Дата</th><th class="num">Обработано</th><th class="num">Назначено встреч</th>'+
-      '<th class="num">Проведено</th><th class="num">Отказов</th><th>Причины отказа</th><th class="num">Бронь</th>'+
-      '<th class="num">Продаж</th><th class="num">Сумма $</th><th></th></tr></thead><tbody>'+
+    if(!rr.length){ w.innerHTML='<div class="empty" style="border:0"><b>Отчётов за месяц нет</b>Заполните форму выше — каждый сохранённый день появится здесь строкой.</div>'; return; }
+    w.innerHTML='<table><thead><tr><th>Дата</th><th>Обработано</th><th class="num">Назначенные встречи</th><th>Проведено встреч</th>'+
+      '<th>Отказано (причина отказа)</th><th>Бронь (ФИО покупателей)</th><th>Продаж (ФИО покупателей)</th><th></th></tr></thead><tbody>'+
       rr.map(function(r){
-        var flag = r.held>r.set ? ' class="flagged"' : '';
-        return '<tr'+flag+'><td>'+esc(fmtDate(r.date))+'</td>'+
-          cellN(r.pref+"worked", r.auto.worked)+
-          cellN(r.pref+"set", r.auto.set)+
-          cellN(r.pref+"held", r.auto.held)+
-          cellN(r.pref+"rej", r.auto.rej)+
-          cellT(r.pref+"causes", r.auto.causes, "причина — сколько")+
-          cellN(r.pref+"bron", r.auto.bron)+
-          cellN(r.pref+"sold", r.auto.sold)+
-          cellN(r.pref+"money", r.auto.money)+
-          '<td><button class="lnk" data-reset="'+esc(r.pref)+'">сброс</button></td></tr>';
-      }).join("")+'</tbody><tfoot><tr><td>Итого</td><td class="num">'+T.worked+'</td><td class="num">'+T.set+'</td>'+
-      '<td class="num">'+T.held+'</td><td class="num">'+T.rej+'</td><td></td><td class="num">'+T.bron+'</td>'+
-      '<td class="num">'+T.sold+'</td><td class="num">'+money(T.money)+'</td><td></td></tr></tfoot></table>';
-    bindCells(w, render);
+        var flag = num(r.held)>num(r.set) ? ' class="flagged"' : '';
+        var wk=[]; if(r.worked!=="") wk.push("<b>"+esc(r.worked)+"</b>");
+        if(num(r.calls)) wk.push(esc(r.calls)+" звонк.");
+        if(num(r.comments)) wk.push(esc(r.comments)+" комм.");
+        var held = (r.held!==""?"<b>"+esc(r.held)+"</b>":"—")+(r.heldNote?'<br><span class="hint">'+esc(r.heldNote)+'</span>':'');
+        var rej = (num(r.rej)?"<b>"+esc(r.rej)+"</b> — ":"")+(esc(r.rejReason)||(num(r.rej)?"":"нет"));
+        var bron = r.bronNames ? esc(r.bronNames) : "нет";
+        var sold = (r.soldNames ? esc(r.soldNames) : "нет")+(r.saleNote?'<br><span class="hint">'+esc(r.saleNote)+'</span>':'');
+        return '<tr'+flag+'><td>'+esc(fmtDate(r.date))+'</td><td class="wrap">'+(wk.join(" · ")||"—")+'</td>'+
+          '<td class="num">'+(r.set!==""?esc(r.set):"—")+'</td><td class="wrap">'+held+'</td>'+
+          '<td class="wrap">'+rej+'</td><td class="wrap">'+bron+'</td><td class="wrap">'+sold+'</td>'+
+          '<td style="white-space:nowrap"><button class="lnk ok" data-edit="'+r.id+'">изменить</button> &nbsp;<button class="lnk" data-del="'+r.id+'">удалить</button></td></tr>';
+      }).join("")+'</tbody><tfoot><tr><td>Итого</td><td>'+a.worked+'</td><td class="num">'+a.set+'</td><td>'+a.held+'</td>'+
+      '<td>'+a.rej+'</td><td>'+a.bron+'</td><td>'+a.sold+'</td><td></td></tr></tfoot></table>';
+    w.onclick=function(ev){
+      var e=ev.target.closest("[data-edit]"), d=ev.target.closest("[data-del]");
+      if(e){ var r=S.daily.find(function(x){return x.id===e.dataset.edit;}); if(r){ load(r); root.scrollIntoView({block:"start",behavior:"smooth"}); } }
+      else if(d){
+        var i=S.daily.findIndex(function(x){return x.id===d.dataset.del;});
+        if(i>=0){ var id=S.daily[i].id; S.daily.splice(i,1); persist(); drop("daily",id); if(editing===id) reset(); render(); toast("День удалён"); }
+      }
+    };
   }
-  root._render=render; render();
+  root._render=render;
+  reset(); render();
 }
 
 /* ==================================================================
@@ -1097,7 +1176,7 @@ function initRDay(root){
    ================================================================== */
 function initRMgr(root){
   root.innerHTML =
-  '<p class="lede">Сводка по отделу за месяц — строка на каждого менеджера, как в вашем августовском файле. Ячейки заполняются вручную или считаются сами. Строка подсвечивается, если <b>проведённых встреч больше назначенных</b>: в августе так было у 6 менеджеров из 9.</p>'+
+  '<p class="lede">Сводка по отделу — строка на каждого менеджера, как в вашем сводном отчёте. Цифры <b>собираются из дневных отчётов</b> вкладки «Лиды по дням», а если дневных нет — из «Звонков» и «Офиса». Любую ячейку можно вписать руками. Строка подсвечивается, если проведённых встреч больше назначенных.</p>'+
   '<div class="tools"><input type="month" data-f="mon" aria-label="Месяц">'+
     '<button class="btn btn-ghost btn-sm" data-f="exp" type="button">Выгрузить в Excel</button></div>'+LEGEND+
   '<div class="warn" data-f="warn" hidden><span aria-hidden="true">⚑</span><div data-f="warnText"></div></div>'+
@@ -1109,15 +1188,16 @@ function initRMgr(root){
   function rowsFor(){
     var mon=f(root,"mon").value;
     return MGRS.map(function(m){
-      var L=S.leads.filter(function(l){return l.mgr===m && inMonth(l.date,mon);});
+      var Dd=S.daily.filter(function(r){return r.mgr===m && inMonth(r.date,mon);});
       var D=S.deals.filter(function(d){return d.mgr===m && inMonth(d.date,mon);});
-      var a=leadAgg(L,D), p=ovrKey("m",m,mon,"");
-      return {
-        mgr:m, auto:a, pref:p,
+      var a;
+      if(Dd.length){ a=dailyAgg(Dd); a.money=D.filter(function(d){return d.status==="Продажа";}).reduce(function(s,d){return s+d.total;},0); }
+      else a=leadAgg(S.leads.filter(function(l){return l.mgr===m && inMonth(l.date,mon);}), D);
+      var p=ovrKey("m",m,mon,"");
+      return { mgr:m, auto:a, pref:p,
         worked:effN(p+"worked",a.worked), set:effN(p+"set",a.set), held:effN(p+"held",a.held),
         rej:effN(p+"rej",a.rej), causes:eff(p+"causes",a.causes),
-        bron:effN(p+"bron",a.bron), sold:effN(p+"sold",a.sold), money:effN(p+"money",a.money)
-      };
+        bron:effN(p+"bron",a.bron), sold:effN(p+"sold",a.sold), money:effN(p+"money",a.money) };
     });
   }
 
@@ -1132,37 +1212,28 @@ function initRMgr(root){
     var rr=rowsFor();
     var T={worked:0,set:0,held:0,rej:0,bron:0,sold:0,money:0};
     rr.forEach(function(r){ ["worked","set","held","rej","bron","sold","money"].forEach(function(k){ T[k]+=r[k]; }); });
-    var active=rr.filter(function(r){return r.worked||r.sold||r.bron||r.rej;}).length;
-
+    var active=rr.filter(function(r){return r.worked||r.sold||r.bron||r.rej||r.set||r.held;}).length;
     f(root,"stats").innerHTML=
       '<div class="stat"><div class="n">'+active+'</div><div class="t">менеджеров с данными</div></div>'+
       '<div class="stat"><div class="n">'+T.worked+'</div><div class="t">обработано</div></div>'+
       '<div class="stat"><div class="n">'+T.set+' / '+T.held+'</div><div class="t">встреч назначено / проведено</div></div>'+
       '<div class="stat"><div class="n">'+T.rej+'</div><div class="t">отказов</div></div>'+
-      '<div class="stat money"><div class="n">'+money(T.money)+'</div><div class="t">продаж</div></div>';
-
+      '<div class="stat money"><div class="n">'+T.bron+' / '+T.sold+'</div><div class="t">броней / продаж</div></div>';
     var bad=rr.filter(function(r){return r.held>r.set;});
     if(bad.length){
-      f(root,"warnText").innerHTML="Проведено встреч больше, чем назначено, у: <b>"+esc(bad.map(function(r){return r.mgr;}).join(", "))+
-        "</b>. Либо встречу провели без записи о назначении, либо цифры взяты из разных источников.";
+      f(root,"warnText").innerHTML="Проведено встреч больше, чем назначено, у: <b>"+esc(bad.map(function(r){return r.mgr;}).join(", "))+"</b>.";
       f(root,"warn").hidden=false;
     } else f(root,"warn").hidden=true;
-
     var w=f(root,"tblw");
-    w.innerHTML='<table><thead><tr><th>Менеджер</th><th class="num">Обработано</th><th class="num">Назначено встреч</th>'+
-      '<th class="num">Проведено</th><th class="num">Отказов</th><th>Частая причина отказа</th><th class="num">Бронь</th>'+
+    w.innerHTML='<table><thead><tr><th>Менеджер</th><th class="num">Обработано</th><th class="num">Назначенные встречи</th>'+
+      '<th class="num">Проведено встреч</th><th class="num">Отказано</th><th>Частая причина отказа</th><th class="num">Бронь</th>'+
       '<th class="num">Продаж</th><th class="num">Сумма $</th><th></th></tr></thead><tbody>'+
       rr.map(function(r){
         var flag=r.held>r.set?' class="flagged"':'';
         return '<tr'+flag+'><td>'+esc(r.mgr)+'</td>'+
-          cellN(r.pref+"worked", r.auto.worked)+
-          cellN(r.pref+"set", r.auto.set)+
-          cellN(r.pref+"held", r.auto.held)+
-          cellN(r.pref+"rej", r.auto.rej)+
-          cellT(r.pref+"causes", r.auto.causes, "причина — сколько")+
-          cellN(r.pref+"bron", r.auto.bron)+
-          cellN(r.pref+"sold", r.auto.sold)+
-          cellN(r.pref+"money", r.auto.money)+
+          cellN(r.pref+"worked", r.auto.worked)+cellN(r.pref+"set", r.auto.set)+cellN(r.pref+"held", r.auto.held)+
+          cellN(r.pref+"rej", r.auto.rej)+cellT(r.pref+"causes", r.auto.causes, "причина")+
+          cellN(r.pref+"bron", r.auto.bron)+cellN(r.pref+"sold", r.auto.sold)+cellN(r.pref+"money", r.auto.money)+
           '<td><button class="lnk" data-reset="'+esc(r.pref)+'">сброс</button></td></tr>';
       }).join("")+'</tbody><tfoot><tr><td>Итого</td><td class="num">'+T.worked+'</td><td class="num">'+T.set+'</td>'+
       '<td class="num">'+T.held+'</td><td class="num">'+T.rej+'</td><td></td><td class="num">'+T.bron+'</td>'+
@@ -1173,95 +1244,140 @@ function initRMgr(root){
 }
 
 /* ==================================================================
-   ВКЛАДКА 7 · ИТОГ ПО ПРОДАЖАМ
+   ВКЛАДКА 7 · ИТОГ ПО ПРОДАЖАМ — в формате «Итогового отчёта менеджеров»
    ================================================================== */
 function initRSale(root){
   root.innerHTML =
-  '<p class="lede">Аналог «Отчёта по всем менеджерам». Строки заполняются руками или берутся из вкладки «Продажи», <b>но итог всегда складывается из строк</b>. В августовском файле метраж сходился (2 025,41 м²), а сумма расходилась на 238 597 $ — здесь такое расхождение невозможно.</p>'+
+  '<p class="lede">Итоговый отчёт менеджеров по продажам — те же колонки, что в вашем документе. <b>Каждая квартира — отдельная строка</b>, общий объём и общая сумма по менеджеру складываются сами. Квартиры можно добавлять прямо здесь — они же появятся во вкладке «Продажи».</p>'+
+  '<div class="block entry"><div class="block-h"><h2>Добавить квартиру</h2></div>'+
+    '<div class="formgrid">'+
+      '<div class="field"><label class="lbl">Менеджер <span class="req">•</span></label><select data-f="mgr">'+MGRS.map(function(m){return '<option>'+esc(m)+'</option>';}).join("")+'</select></div>'+
+      '<div class="field span2"><label class="lbl">Объект <span class="req">•</span></label><select data-f="obj">'+OBJECTS.map(function(o){return '<option>'+esc(o)+'</option>';}).join("")+'</select></div>'+
+      '<div class="field"><label class="lbl">Блок</label><input type="text" data-f="block" placeholder="А"></div>'+
+      '<div class="field"><label class="lbl">Этаж</label><input type="number" data-f="floor" min="0" inputmode="numeric"></div>'+
+      '<div class="field"><label class="lbl">Площадь м² <span class="req">•</span></label><input type="number" data-f="area" min="0" step="0.01" inputmode="decimal"></div>'+
+      '<div class="field"><label class="lbl">Метод</label><select data-f="method"><option value="">—</option>'+METHODS.map(function(m){return '<option>'+esc(m)+'</option>';}).join("")+'</select></div>'+
+      '<div class="field"><label class="lbl">Цена за м², $</label><input type="number" data-f="price" min="0" inputmode="numeric"></div>'+
+      '<div class="field"><label class="lbl">Сумма, $ <span class="req">•</span></label><input type="number" data-f="total" min="0" inputmode="numeric"><p class="hint" data-f="priceHint"></p></div>'+
+      '<div class="field"><label class="lbl">Внесено, $</label><input type="number" data-f="paid" min="0" inputmode="numeric"></div>'+
+      '<div class="field"><label class="lbl">Статус</label><select data-f="status"><option>Продажа</option><option>Бронь</option></select></div>'+
+      '<div class="field"><label class="lbl">Дата</label><input type="date" data-f="dt"></div>'+
+      '<div class="field span2"><label class="lbl">Покупатель</label><input type="text" data-f="buyer"></div>'+
+      '<div class="field span2"><label class="lbl">Примечание</label><input type="text" data-f="note" placeholder="например: остаток до конца сентября"></div>'+
+    '</div>'+
+    '<p class="err" data-f="e-num" hidden>Нужны площадь и сумма (или цена за м²)</p>'+
+    '<div class="actions"><div class="sum">Остаток: <b data-f="rest">0 $</b></div>'+
+      '<button class="btn btn-main" data-f="add" type="button">Добавить квартиру</button></div>'+
+  '</div>'+
   '<div class="tools"><input type="month" data-f="mon" aria-label="Месяц">'+
     '<select data-f="st" aria-label="Статус"><option value="">Продажи и брони</option><option>Продажа</option><option>Бронь</option></select>'+
-    '<button class="btn btn-ghost btn-sm" data-f="exp" type="button">Выгрузить в Excel</button></div>'+LEGEND+
+    '<button class="btn btn-ghost btn-sm" data-f="exp" type="button">Выгрузить в Excel</button></div>'+
   '<div class="stats" data-f="stats"></div>'+
-  '<div class="block-h"><h2>По менеджерам</h2></div><div class="tbl-wrap" data-f="tblw"></div>'+
+  '<div class="tbl-wrap" data-f="tblw"></div>'+
   '<div class="cols" style="margin-top:24px">'+
-    '<div><div class="block-h"><h2>По объектам</h2><span class="note">из вкладки «Продажи»</span></div><div class="tbl-wrap" data-f="objw"></div></div>'+
-    '<div><div class="block-h"><h2>По методу оплаты</h2><span class="note">из вкладки «Продажи»</span></div><div class="tbl-wrap" data-f="metw"></div></div>'+
+    '<div><div class="block-h"><h2>По объектам</h2></div><div class="tbl-wrap" data-f="objw"></div></div>'+
+    '<div><div class="block-h"><h2>По методу оплаты</h2></div><div class="tbl-wrap" data-f="metw"></div></div>'+
   '</div>';
 
+  var mon=bindMoney(root);
   f(root,"mon").value=thisMonth();
+  f(root,"dt").value=todayISO();
+  var lastM=lsGet(LS_MGR); if(lastM && MGRS.indexOf(lastM)>=0) f(root,"mgr").value=lastM;
   f(root,"mon").addEventListener("change", render);
   f(root,"st").addEventListener("change", render);
 
+  f(root,"add").addEventListener("click", function(){
+    var a=num(fv(root,"area")), t=num(fv(root,"total")), pd=num(fv(root,"paid"));
+    if(!a||!t){ f(root,"e-num").hidden=false; toast("Нужны площадь и сумма"); return; }
+    f(root,"e-num").hidden=true;
+    var rec={ id:uid(), date:f(root,"dt").value||todayISO(), mgr:f(root,"mgr").value, buyer:fv(root,"buyer"),
+      object:f(root,"obj").value, block:fv(root,"block"), floor:fv(root,"floor"),
+      area:a, price:num(fv(root,"price"))||t/a, total:t, paid:pd, rest:t-pd,
+      method:f(root,"method").value, term:"", status:f(root,"status").value, note:fv(root,"note"),
+      createdAt:new Date().toISOString() };
+    saveDeal(rec);
+    f(root,"mon").value=rec.date.slice(0,7);
+    ["block","floor","area","price","total","paid","buyer","note"].forEach(function(n){ f(root,n).value=""; });
+    mon.reset(); render();
+    toast(rec.mgr+": "+rec.object+", "+money(rec.total));
+    f(root,"area").focus();
+  });
+
   function pick(){
-    var mon=f(root,"mon").value, st=f(root,"st").value;
-    return S.deals.filter(function(d){ return inMonth(d.date,mon) && (!st || d.status===st); });
+    var mo=f(root,"mon").value, st=f(root,"st").value;
+    return S.deals.filter(function(d){ return inMonth(d.date,mo) && (!st || d.status===st); })
+      .sort(function(a,b){ return (a.createdAt||"").localeCompare(b.createdAt||""); });
   }
-  function rowsFor(){
-    var D=pick(), mon=f(root,"mon").value, map={};
-    D.forEach(function(d){
-      var r=map[d.mgr]||(map[d.mgr]={objs:[],n:0,m2:0,total:0,paid:0});
-      if(r.objs.indexOf(d.object)<0) r.objs.push(d.object);
-      r.n++; r.m2+=d.area; r.total+=d.total; r.paid+=d.paid;
-    });
+  function byMgr(D){
     return MGRS.map(function(m){
-      var a=map[m]||{objs:[],n:0,m2:0,total:0,paid:0};
-      var auto={ objs:a.objs.join(", "), n:a.n, m2:Math.round(a.m2*100)/100,
-                 total:Math.round(a.total), paid:Math.round(a.paid) };
-      var p=ovrKey("s",m,mon,"");
-      var total=effN(p+"total",auto.total), paid=effN(p+"paid",auto.paid);
-      return { mgr:m, auto:auto, pref:p,
-        objs:eff(p+"objs",auto.objs), n:effN(p+"n",auto.n), m2:effN(p+"m2",auto.m2),
-        total:total, paid:paid, rest:total-paid };
-    });
+      var list=D.filter(function(d){return d.mgr===m;});
+      return { mgr:m, list:list,
+        m2:list.reduce(function(s,d){return s+d.area;},0),
+        total:list.reduce(function(s,d){return s+d.total;},0),
+        paid:list.reduce(function(s,d){return s+d.paid;},0) };
+    }).filter(function(g){return g.list.length;});
   }
+  function r2(n){ return (Math.round(n*100)/100).toLocaleString("ru-RU"); }
 
   f(root,"exp").addEventListener("click", function(){
-    var rr=rowsFor();
-    var head=["Менеджер","Объекты","Квартир","Общий объём м²","Общая сумма $","Внесено $","Остаток $"];
-    download("sebiston-itog-prodazh-"+f(root,"mon").value+".csv", csvText(head, rr.map(function(r){
-      return [r.mgr, r.objs, r.n, r.m2, r.total, r.paid, r.rest];
-    })));
+    var G=byMgr(pick()); if(!G.length){ toast("Нечего выгружать"); return; }
+    var head=["ФИО менеджера","Объект","Блок","Этаж","Площадь м²","Метод","Сумма $","Внесено $","Статус","Общий объём м² (менеджер)","Общая сумма $ (менеджер)"];
+    var body=[];
+    G.forEach(function(g){
+      g.list.forEach(function(d,i){
+        body.push([i===0?g.mgr:"", d.object, d.block, d.floor, d.area, d.method, d.total, d.paid, d.status,
+                   i===0?Math.round(g.m2*100)/100:"", i===0?Math.round(g.total):""]);
+      });
+    });
+    var T=G.reduce(function(s,g){return {n:s.n+g.list.length,m2:s.m2+g.m2,t:s.t+g.total};},{n:0,m2:0,t:0});
+    body.push(["ИТОГО","квартир: "+T.n,"","","","","","","",Math.round(T.m2*100)/100,Math.round(T.t)]);
+    download("sebiston-itog-prodazh-"+f(root,"mon").value+".csv", csvText(head, body));
   });
 
   function render(){
-    var rr=rowsFor(), D=pick();
-    var T={n:0,m2:0,total:0,paid:0,rest:0};
-    rr.forEach(function(r){ T.n+=r.n; T.m2+=r.m2; T.total+=r.total; T.paid+=r.paid; T.rest+=r.rest; });
-
+    var D=pick(), G=byMgr(D);
+    var T={n:0,m2:0,total:0,paid:0};
+    G.forEach(function(g){ T.n+=g.list.length; T.m2+=g.m2; T.total+=g.total; T.paid+=g.paid; });
     f(root,"stats").innerHTML=
       '<div class="stat"><div class="n">'+T.n+'</div><div class="t">квартир</div></div>'+
-      '<div class="stat"><div class="n">'+(Math.round(T.m2*100)/100).toLocaleString("ru-RU")+'</div><div class="t">общий объём, м²</div></div>'+
+      '<div class="stat"><div class="n">'+r2(T.m2)+'</div><div class="t">общий объём, м²</div></div>'+
       '<div class="stat money"><div class="n">'+money(T.total)+'</div><div class="t">общая сумма</div></div>'+
       '<div class="stat"><div class="n">'+money(T.paid)+'</div><div class="t">внесено</div></div>'+
-      '<div class="stat"><div class="n">'+money(T.rest)+'</div><div class="t">остаток</div></div>';
+      '<div class="stat"><div class="n">'+money(T.total-T.paid)+'</div><div class="t">остаток</div></div>';
 
     var w=f(root,"tblw");
-    w.innerHTML='<table><thead><tr><th>Менеджер</th><th>Объекты</th><th class="num">Квартир</th><th class="num">Объём м²</th>'+
-      '<th class="num">Общая сумма $</th><th class="num">Внесено $</th><th class="num">Остаток</th><th></th></tr></thead><tbody>'+
-      rr.map(function(r){
-        return '<tr><td>'+esc(r.mgr)+'</td>'+
-          cellT(r.pref+"objs", r.auto.objs, "Скандинавия, Address")+
-          cellN(r.pref+"n", r.auto.n)+
-          cellN(r.pref+"m2", r.auto.m2)+
-          cellN(r.pref+"total", r.auto.total)+
-          cellN(r.pref+"paid", r.auto.paid)+
-          '<td class="num">'+money(r.rest)+'</td>'+
-          '<td><button class="lnk" data-reset="'+esc(r.pref)+'">сброс</button></td></tr>';
-      }).join("")+'</tbody><tfoot><tr><td colspan="2">Итого</td><td class="num">'+T.n+'</td>'+
-      '<td class="num">'+(Math.round(T.m2*100)/100).toLocaleString("ru-RU")+'</td><td class="num">'+money(T.total)+'</td>'+
-      '<td class="num">'+money(T.paid)+'</td><td class="num">'+money(T.rest)+'</td><td></td></tr></tfoot></table>';
-    bindCells(w, render);
+    if(!G.length){ w.innerHTML='<div class="empty" style="border:0"><b>Квартир за месяц нет</b>Добавьте первую через форму выше.</div>'; }
+    else{
+      var html='<table class="report"><thead><tr><th>ФИО менеджера</th><th>Объект</th><th>Блок</th><th class="num">Этаж</th>'+
+        '<th class="num">Площадь м²</th><th>Сумма по квартире</th><th class="num">Общий объём, м²</th><th class="num">Общая сумма</th><th></th></tr></thead><tbody>';
+      G.forEach(function(g){
+        var n=g.list.length;
+        g.list.forEach(function(d,i){
+          html+='<tr class="'+(i===0?"grp-first":"")+'">';
+          if(i===0) html+='<td rowspan="'+n+'" class="grp"><b>'+esc(g.mgr)+'</b></td>';
+          html+='<td>'+esc(d.object)+(d.status==="Бронь"?' <span class="badge bron">бронь</span>':'')+'</td>'+
+            '<td>'+esc(d.block||"—")+'</td><td class="num">'+esc(d.floor||"—")+'</td><td class="num">'+r2(d.area)+'</td>'+
+            '<td>'+(d.method?esc(d.method)+" — ":"")+money(d.total)+(d.paid&&d.paid<d.total?'<br><span class="hint">внесено '+money(d.paid)+'</span>':'')+'</td>';
+          if(i===0) html+='<td rowspan="'+n+'" class="num grp">'+r2(g.m2)+'</td><td rowspan="'+n+'" class="num grp"><b>'+money(g.total)+'</b></td>';
+          html+='<td><button class="lnk" data-del="'+d.id+'">удалить</button></td></tr>';
+        });
+      });
+      html+='</tbody><tfoot><tr><td>ИТОГО</td><td colspan="3">квартир: '+T.n+'</td><td></td><td></td>'+
+        '<td class="num">'+r2(T.m2)+'</td><td class="num">'+money(T.total)+'</td><td></td></tr></tfoot></table>';
+      w.innerHTML=html;
+      w.onclick=function(ev){
+        var b=ev.target.closest("[data-del]"); if(!b) return;
+        if(delDeal(b.dataset.del)){ render(); toast("Квартира удалена"); }
+      };
+    }
 
     function slice(key, box, label){
       var m={};
       D.forEach(function(d){ var k=d[key]||"не указан"; var r=m[k]||(m[k]={n:0,m2:0,total:0}); r.n++; r.m2+=d.area; r.total+=d.total; });
       var ks=Object.keys(m).sort(function(a,b){return m[b].total-m[a].total;});
-      if(!ks.length){ f(root,box).innerHTML='<div class="empty" style="border:0">Нет записанных сделок — этот разрез строится только из вкладки «Продажи».</div>'; return; }
-      f(root,box).innerHTML='<table><thead><tr><th>'+esc(label)+'</th><th class="num">Кол-во</th><th class="num">м²</th><th class="num">Сумма</th></tr></thead><tbody>'+
-        ks.map(function(k){
-          return '<tr><td class="wrap">'+esc(k)+'</td><td class="num">'+m[k].n+'</td>'+
-          '<td class="num">'+(Math.round(m[k].m2*100)/100).toLocaleString("ru-RU")+'</td><td class="num">'+money(m[k].total)+'</td></tr>';
-        }).join("")+'</tbody></table>';
+      if(!ks.length){ f(root,box).innerHTML='<div class="empty" style="border:0">Нет данных</div>'; return; }
+      f(root,box).innerHTML='<table><thead><tr><th>'+esc(label)+'</th><th class="num">Квартир</th><th class="num">м²</th><th class="num">Сумма</th></tr></thead><tbody>'+
+        ks.map(function(k){ return '<tr><td class="wrap">'+esc(k)+'</td><td class="num">'+m[k].n+'</td><td class="num">'+r2(m[k].m2)+'</td><td class="num">'+money(m[k].total)+'</td></tr>'; }).join("")+'</tbody></table>';
     }
     slice("object","objw","Объект");
     slice("method","metw","Метод");
@@ -1334,7 +1450,14 @@ async function connect(){
       if(ch){ persist(); refreshAll(); }
     });
   }catch(e){}
-  [["leads","leads"],["deals","deals"],["tlog","tlog"]].forEach(function(p){
+  try{
+    db.collection("results").onSnapshot(function(snap){
+      var ch=false;
+      (snap&&snap.docs?snap.docs:[]).forEach(function(d){ var v=d.data?d.data():d; if(v&&v.id&&v.map){ S.results[v.id]=v.map; ch=true; } });
+      if(ch){ persist(); refreshAll(); }
+    });
+  }catch(e){}
+  [["leads","leads"],["deals","deals"],["tlog","tlog"],["daily","daily"]].forEach(function(p){
     try{
       db.collection(p[0]).onSnapshot(function(snap){
         var docs=[];
