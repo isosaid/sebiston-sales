@@ -1199,7 +1199,7 @@ function initRMgr(root){
       '<div class="field span3"><label class="lbl">Продажа — ФИО покупателей</label><input type="text" data-f="soldNames" placeholder="ФИО через запятую или число"><p class="hint" data-f="soldCnt"></p></div>'+
     '</div>'+
     '<datalist id="rejlist2">'+REJECTS.map(function(r){return '<option value="'+esc(r)+'"></option>';}).join("")+'</datalist>'+
-    '<div class="warn" data-f="heldWarn" hidden style="margin-top:4px"><span aria-hidden="true">⚑</span><div>Проведено встреч больше, чем назначено. Проверьте цифры — в августовском сводном так было у 6 менеджеров из 9.</div></div>'+
+    '<div class="warn" data-f="heldWarn" hidden style="margin-top:4px"><span aria-hidden="true">⚑</span><div>Проведено встреч больше, чем назначено. Проверьте цифры — или укажите, что встреча была без предварительной записи.</div></div>'+
     '<div class="actions"><div class="sum" data-f="sum"></div>'+
       '<button class="btn btn-ghost" data-f="clear" type="button">Очистить</button>'+
       '<button class="btn btn-main" data-f="save" type="button">Сохранить</button></div>'+
