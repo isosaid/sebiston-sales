@@ -79,7 +79,7 @@ main{max-width:1080px;margin:0 auto;padding:22px 18px 40px}
 label.lbl{display:block;font-size:13.5px;font-weight:500;color:var(--ink-2);margin:0 0 6px}
 .req{color:var(--green);font-weight:600}
 
-input[type=text],input[type=tel],input[type=number],input[type=date],input[type=time],input[type=month],textarea,select{
+input[type=text],input[type=tel],input[type=number],input[type=date],input[type=time],input[type=month],input[type=password],textarea,select{
   width:100%;font:inherit;font-size:16px;color:var(--ink);background:var(--card);
   border:1px solid var(--line);border-radius:10px;padding:10px 12px;
 }
@@ -210,9 +210,39 @@ td.has-auto{position:relative}
 .auto{display:block;font-size:11px;color:var(--ink-3);text-align:right;margin-top:1px}
 .legend{font-size:12.5px;color:var(--ink-3);margin:0 0 14px;line-height:1.5;max-width:80ch}
 .legend .sw{display:inline-block;width:11px;height:11px;border-radius:3px;background:var(--amber-soft);border:1px solid var(--amber);vertical-align:-1px;margin-right:4px}
+
+/* вход */
+html.locked .top, html.locked main{display:none}
+.login{display:none;min-height:100vh;min-height:100dvh;align-items:center;justify-content:center;padding:24px 18px}
+html.locked .login{display:flex}
+.login-card{width:100%;max-width:360px;background:var(--card);border:1px solid var(--line);border-radius:16px;padding:28px 24px}
+.login-card .logo{height:30px;width:auto;display:block;margin:0 0 22px}
+.login-card .logo path{fill:var(--brand)}
+.login-card h1{font-size:19px;margin:0 0 4px;font-weight:700}
+.login-card p.sub{font-size:13.5px;color:var(--ink-3);margin:0 0 20px}
+.login-card .btn{width:100%;margin-top:6px}
+.logout{appearance:none;border:1px solid var(--line);background:none;color:var(--ink-2);font:inherit;font-size:12.5px;border-radius:8px;padding:5px 10px;cursor:pointer;margin-left:10px}
+.logout:hover{border-color:var(--ink-3);color:var(--ink)}
+.logout:focus-visible{outline:2px solid var(--focus);outline-offset:2px}
 </style>
 </head>
 <body>
+<script>
+(function(){try{var a=JSON.parse(localStorage.getItem("sb_auth")||"null");if(!a||!a.exp||a.exp<Date.now())document.documentElement.classList.add("locked");}catch(e){document.documentElement.classList.add("locked");}})();
+</script>
+<div class="login" id="login">
+  <form class="login-card" id="loginForm" autocomplete="on" novalidate>
+    <svg class="logo" id="loginLogo" aria-hidden="true"></svg>
+    <h1>Отдел продаж</h1>
+    <p class="sub">Войдите, чтобы продолжить</p>
+    <div class="field"><label class="lbl" for="lgUser">Логин</label>
+      <input id="lgUser" type="text" name="username" autocomplete="username" autocapitalize="none" spellcheck="false" required></div>
+    <div class="field"><label class="lbl" for="lgPass">Пароль</label>
+      <input id="lgPass" name="password" type="password" autocomplete="current-password" required></div>
+    <p class="err" id="lgErr" role="alert" hidden></p>
+    <button class="btn btn-main" type="submit" id="lgBtn">Войти</button>
+  </form>
+</div>
 
 <header class="top">
   <div class="top-in">
@@ -1587,6 +1617,48 @@ restore();
 open("call");
 connect();
 
+})();
+</script>
+<script>
+/* ВХОД. Пароли хранятся только как PBKDF2-SHA256 хэши. */
+(function(){
+var USERS=[{"u": "saidov", "n": "Саидов", "s": "e620338ae38e8e76cd5c81c159023015", "h": "041b2988d7086c53479653419e3200c821a2d95aef668c571b97e101f5a6be54"}, {"u": "manuchehr", "n": "Манучехр Шарипов", "s": "6d645b80dfbf723317a734b89ea12a3c", "h": "cac4cede9c332f0b273ca912beb212f3b4828f7a56646f8f304685e733a4f77d"}];
+var KEY="sb_auth", DAYS=30;
+var root=document.documentElement;
+function hex(buf){return Array.prototype.map.call(new Uint8Array(buf),function(b){return("0"+b.toString(16)).slice(-2);}).join("");}
+function unhex(h){var a=new Uint8Array(h.length/2);for(var i=0;i<a.length;i++)a[i]=parseInt(h.substr(i*2,2),16);return a;}
+async function hash(pw,salt){
+  var k=await crypto.subtle.importKey("raw",new TextEncoder().encode(pw),"PBKDF2",false,["deriveBits"]);
+  return hex(await crypto.subtle.deriveBits({name:"PBKDF2",hash:"SHA-256",salt:unhex(salt),iterations:150000},k,256));
+}
+function session(){try{var a=JSON.parse(localStorage.getItem(KEY)||"null");return a&&a.exp>Date.now()?a:null;}catch(e){return null;}}
+function showUser(a){
+  var w=document.getElementById("who"); if(!w) return;
+  w.textContent=a.n;
+  var b=document.createElement("button"); b.type="button"; b.className="logout"; b.textContent="Выйти";
+  b.addEventListener("click",function(){try{localStorage.removeItem(KEY);}catch(e){} location.reload();});
+  w.appendChild(b);
+}
+var logo=document.querySelector(".mark .logo");
+if(logo){var l=document.getElementById("loginLogo");l.setAttribute("viewBox",logo.getAttribute("viewBox"));l.innerHTML=logo.innerHTML;}
+var cur=session();
+if(cur){root.classList.remove("locked");showUser(cur);return;}
+root.classList.add("locked");
+var f=document.getElementById("loginForm"),err=document.getElementById("lgErr"),btn=document.getElementById("lgBtn");
+setTimeout(function(){document.getElementById("lgUser").focus();},0);
+f.addEventListener("submit",async function(ev){
+  ev.preventDefault(); err.hidden=true;
+  var u=document.getElementById("lgUser").value.trim().toLowerCase(), p=document.getElementById("lgPass").value;
+  var rec=USERS.filter(function(x){return x.u===u;})[0];
+  btn.disabled=true; btn.textContent="Проверяю…";
+  var ok=false;
+  try{ if(rec&&p) ok=(await hash(p,rec.s))===rec.h; }catch(e){ err.textContent="Браузер не поддерживает проверку пароля. Откройте сайт по https."; err.hidden=false; }
+  btn.disabled=false; btn.textContent="Войти";
+  if(!ok){ if(err.hidden){err.textContent="Неверный логин или пароль";err.hidden=false;} document.getElementById("lgPass").value=""; document.getElementById("lgPass").focus(); return; }
+  var a={u:rec.u,n:rec.n,exp:Date.now()+DAYS*864e5};
+  try{localStorage.setItem(KEY,JSON.stringify(a));}catch(e){}
+  root.classList.remove("locked"); showUser(a); window.scrollTo({top:0});
+});
 })();
 </script>
 </body>
