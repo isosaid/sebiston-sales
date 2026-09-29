@@ -226,8 +226,6 @@ td.has-auto{position:relative}
     <button class="tab" role="tab" data-p="time"   aria-selected="false">Хронометраж</button>
     <span class="tabsep" aria-hidden="true"></span>
     <button class="tab" role="tab" data-p="rday"   aria-selected="false">Лиды по дням</button>
-    <button class="tab" role="tab" data-p="rmgr"   aria-selected="false">Лиды: все менеджеры</button>
-    <button class="tab" role="tab" data-p="rsale"  aria-selected="false">Итог по продажам</button>
   </nav>
 </header>
 
@@ -239,8 +237,6 @@ td.has-auto{position:relative}
   <section class="panel" id="p-sales"  role="tabpanel" hidden></section>
   <section class="panel" id="p-time"   role="tabpanel" hidden></section>
   <section class="panel" id="p-rday"   role="tabpanel" hidden></section>
-  <section class="panel" id="p-rmgr"   role="tabpanel" hidden></section>
-  <section class="panel" id="p-rsale"  role="tabpanel" hidden></section>
 </main>
 
 <div class="toast" id="toast" role="status" aria-live="polite"></div>
@@ -1511,9 +1507,7 @@ var PANELS = {
   office:{node:$("p-office"), init:function(n){initLeadPanel(n,"office");}},
   sales: {node:$("p-sales"),  init:initSales},
   time:  {node:$("p-time"),   init:initTime},
-  rday:  {node:$("p-rday"),   init:initRDay},
-  rmgr:  {node:$("p-rmgr"),   init:initRMgr},
-  rsale: {node:$("p-rsale"),  init:initRSale}
+  rday:  {node:$("p-rday"),   init:initRDay}
 };
 var current="call";
 function open(key){
