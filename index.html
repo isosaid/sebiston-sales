@@ -111,6 +111,7 @@ input[aria-invalid="true"]{border-color:var(--red);background:var(--red-soft)}
 .dup b{color:var(--amber)}
 .cond{margin:12px 0 0;padding:13px;border-radius:12px;background:var(--line-2);border:1px solid var(--line)}
 .cond[hidden]{display:none}
+.other{margin-top:10px}
 .check{display:flex;align-items:center;gap:9px;cursor:pointer;font-size:14.5px;color:var(--ink-2);margin:8px 0 0}
 .check input{width:19px;height:19px;accent-color:var(--green);margin:0;flex:none}
 
@@ -490,7 +491,7 @@ function leadPanel(mode){
   '</div>'+
 
   '<div class="block"><div class="block-h"><h2>Что спрашивает</h2></div>'+
-    '<div class="field"><label class="lbl">Тема обращения</label>'+chipsHTML("topic", TOPICS, "")+'</div>'+
+    '<div class="field"><label class="lbl">Тема обращения</label>'+chipsHTML("topic", TOPICS, "")+'<input type="text" class="other" data-f="topicOther" placeholder="Какая тема? Напишите своими словами" aria-label="Другая тема" hidden></div>'+
     '<div class="field"><label class="lbl">Интересует объект</label>'+
       '<div class="chips" data-g="obj" data-multi="1" role="group">'+
         OBJECTS.concat(["Ещё не выбрал"]).map(function(v){return '<button type="button" class="chip" data-v="'+esc(v)+'" aria-pressed="false">'+esc(v)+'</button>';}).join("")+
@@ -504,7 +505,7 @@ function leadPanel(mode){
 
   '<div class="block"><div class="block-h"><h2>Чем закончился контакт</h2></div>'+
     '<div class="field">'+chipsHTML("stage", STAGES, "Потенциальный", {"Горячий":"hot","Отказ":"no"})+'</div>'+
-    '<div class="cond" data-f="rejWrap" hidden><label class="lbl">Почему отказался</label>'+chipsHTML("rej", REJECTS, "")+'</div>'+
+    '<div class="cond" data-f="rejWrap" hidden><label class="lbl">Почему отказался</label>'+chipsHTML("rej", REJECTS, "")+'<input type="text" class="other" data-f="rejOther" placeholder="Какая причина? Напишите своими словами" aria-label="Другая причина отказа" hidden></div>'+
     '<label class="check"><input type="checkbox" data-f="meet"> Назначили встречу или показ</label>'+
     '<div class="cond" data-f="meetWrap" hidden><div class="row">'+
       '<div><label class="lbl">Дата</label><input type="date" data-f="meetDate"></div>'+
@@ -543,6 +544,7 @@ function initLeadPanel(root, mode){
 
   root.addEventListener("chipchange", function(ev){
     if(ev.detail.group==="stage") f(root,"rejWrap").hidden = gv(root,"stage")!=="Отказ";
+    otherToggle("topic","topicOther"); otherToggle("rej","rejOther");
     summary();
   });
   f(root,"meet").addEventListener("change", function(){
@@ -555,6 +557,17 @@ function initLeadPanel(root, mode){
     summary();
   });
   f(root,"waSame").addEventListener("change", function(){ f(root,"waWrap").hidden = this.checked; });
+
+  /* «Другое» — показать поле для своего варианта */
+  function otherToggle(g,fld){
+    var el=f(root,fld), show=gv(root,g)==="Другое", was=!el.hidden;
+    el.hidden=!show;
+    if(show && !was) setTimeout(function(){ try{el.focus();}catch(e){} },0);
+  }
+  function withOther(g,fld){
+    var v=gv(root,g), t=fv(root,fld);
+    return v==="Другое" && t ? "Другое: "+t : v;
+  }
 
   function dup(){
     var d=digits(elTel.value), box=f(root,"dup");
@@ -587,6 +600,7 @@ function initLeadPanel(root, mode){
     gset(root,"topic",""); gset(root,"floor","");
     Array.prototype.forEach.call(root.querySelectorAll('[data-g="obj"] .chip'),function(c){c.setAttribute("aria-pressed","false");});
     gset(root,"stage","Потенциальный"); gset(root,"rej",""); f(root,"rejWrap").hidden=true;
+    ["topicOther","rejOther"].forEach(function(n){ var e=f(root,n); e.value=""; e.hidden=true; });
     if(keepMgr) gset(root,"mgr",keepMgr);
     f(root,"dt").value=todayISO(); f(root,"tm").value=nowHM();
     summary();
@@ -607,10 +621,10 @@ function initLeadPanel(root, mode){
       date: f(root,"dt").value, time: f(root,"tm").value,
       src: gv(root,"src"), fio: elFio.value.trim(), tel: elTel.value.trim(),
       wa: waSame ? elTel.value.trim() : fv(root,"wa"),
-      city: fv(root,"city"), topic: gv(root,"topic"), objects: gvs(root,"obj"),
+      city: fv(root,"city"), topic: withOther("topic","topicOther"), objects: gvs(root,"obj"),
       sqFrom: fv(root,"sqFrom"), sqTo: fv(root,"sqTo"), floor: gv(root,"floor"), budget: fv(root,"budget"),
       stage: gv(root,"stage")||"Потенциальный",
-      reject: gv(root,"stage")==="Отказ" ? gv(root,"rej") : "",
+      reject: gv(root,"stage")==="Отказ" ? withOther("rej","rejOther") : "",
       meetDate: f(root,"meet").checked ? f(root,"meetDate").value : "",
       meetTime: f(root,"meet").checked ? f(root,"meetTime").value : "",
       meetHeld: false,
