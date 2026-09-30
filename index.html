@@ -542,7 +542,9 @@ function leadPanel(mode){
     '<div class="field"><label class="lbl">Площадь, м²</label><div class="row">'+
       '<input type="number" data-f="sqFrom" min="0" step="0.1" placeholder="от" aria-label="Площадь от">'+
       '<input type="number" data-f="sqTo" min="0" step="0.1" placeholder="до" aria-label="Площадь до"></div></div>'+
-    '<div class="field"><label class="lbl">Этаж</label>'+chipsHTML("floor", FLOORS, "")+'</div>'+
+    '<div class="field"><label class="lbl">Этаж</label><div class="row">'+
+      '<input type="number" data-f="flFrom" min="1" step="1" inputmode="numeric" placeholder="от" aria-label="Этаж от">'+
+      '<input type="number" data-f="flTo" min="1" step="1" inputmode="numeric" placeholder="до" aria-label="Этаж до"></div></div>'+
     '<div class="field"><label class="lbl">Бюджет, $</label><input type="number" data-f="budget" min="0" step="1000" inputmode="numeric" placeholder="не обязательно"></div>'+
   '</div>'+
 
@@ -597,6 +599,8 @@ function initLeadPanel(root, mode){
   });
   f(root,"waSame").addEventListener("change", function(){ f(root,"waWrap").hidden = this.checked; });
 
+  /* диапазон «от–до» одной строкой: 3–7, от 3, до 7 */
+  function range(a,b){ return a&&b ? (a===b?a:a+"–"+b) : a ? "от "+a : b ? "до "+b : ""; }
   /* «Другое» — показать поле для своего варианта */
   function otherToggle(g,fld){
     var el=f(root,fld), show=gv(root,g)==="Другое", was=!el.hidden;
@@ -630,12 +634,12 @@ function initLeadPanel(root, mode){
   }
 
   function reset(keepMgr){
-    ["fio","tel","wa","sqFrom","sqTo","budget","note","decision","feedback"].forEach(function(n){ var e=f(root,n); if(e) e.value=""; });
+    ["fio","tel","wa","sqFrom","sqTo","flFrom","flTo","budget","note","decision"].forEach(function(n){ var e=f(root,n); if(e) e.value=""; });
     f(root,"waSame").checked=true; f(root,"waWrap").hidden=true;
     f(root,"meet").checked=false; f(root,"meetWrap").hidden=true;
     f(root,"meetDate").value=""; f(root,"meetTime").value="";
     f(root,"dup").hidden=true;
-    gset(root,"topic",""); gset(root,"floor","");
+    gset(root,"topic","");
     Array.prototype.forEach.call(root.querySelectorAll('[data-g="obj"] .chip'),function(c){c.setAttribute("aria-pressed","false");});
     gset(root,"stage","Потенциальный"); gset(root,"rej",""); f(root,"rejWrap").hidden=true;
     ["topicOther","rejOther"].forEach(function(n){ var e=f(root,n); e.value=""; e.hidden=true; });
@@ -657,7 +661,7 @@ function initLeadPanel(root, mode){
       src: gv(root,"src"), fio: elFio.value.trim(), tel: elTel.value.trim(),
       wa: waSame ? elTel.value.trim() : fv(root,"wa"),
       city: fv(root,"city"), topic: withOther("topic","topicOther"), objects: gvs(root,"obj"),
-      sqFrom: fv(root,"sqFrom"), sqTo: fv(root,"sqTo"), floor: gv(root,"floor"), budget: fv(root,"budget"),
+      sqFrom: fv(root,"sqFrom"), sqTo: fv(root,"sqTo"), floorFrom: fv(root,"flFrom"), floorTo: fv(root,"flTo"), floor: range(fv(root,"flFrom"),fv(root,"flTo")), budget: fv(root,"budget"),
       stage: gv(root,"stage")||"Потенциальный",
       reject: gv(root,"stage")==="Отказ" ? withOther("rej","rejOther") : "",
       meetDate: f(root,"meet").checked ? f(root,"meetDate").value : "",
@@ -679,11 +683,11 @@ function initLeadPanel(root, mode){
     var rows = pick();
     if(!rows.length){ toast("Нечего выгружать"); return; }
     var head = ["№","Дата","Время","Источник","ФИО","Телефон","WhatsApp","Город","Тема вопроса","Объект",
-                "Площадь от","Площадь до","Этаж","Бюджет $","Этап","Причина отказа","Встреча дата","Встреча время","Встреча проведена"]
+                "Площадь от","Площадь до","Этаж от","Этаж до","Бюджет $","Этап","Причина отказа","Встреча дата","Встреча время","Встреча проведена"]
                 .concat(isOffice?["Последнее решение"]:[]).concat(["Примечание","Менеджер"]);
     var body = rows.map(function(l,i){
       var base=[i+1,l.date,l.time,l.src,l.fio,l.tel,l.wa,l.city,l.topic,(l.objects||[]).join(" / "),
-                l.sqFrom,l.sqTo,l.floor,l.budget,l.stage,l.reject,l.meetDate,l.meetTime,l.meetHeld?"да":""];
+                l.sqFrom,l.sqTo,(l.floorFrom!=null?l.floorFrom:l.floor)||"",l.floorTo||"",l.budget,l.stage,l.reject,l.meetDate,l.meetTime,l.meetHeld?"да":""];
       if(isOffice) base=base.concat([l.decision||""]);
       return base.concat([l.note,l.mgr]);
     });
