@@ -68,7 +68,7 @@ main{max-width:1080px;margin:0 auto;padding:22px 18px 40px}
 .lede b{color:var(--ink-2);font-weight:600}
 
 .cols{display:grid;grid-template-columns:minmax(0,420px) minmax(0,1fr);gap:28px;align-items:start}
-@media (max-width:860px){.cols{grid-template-columns:1fr}}
+@media (max-width:860px){.cols{grid-template-columns:minmax(0,1fr)}}
 
 .block{margin:0 0 24px}
 .block-h{display:flex;align-items:baseline;gap:10px;margin:0 0 13px;padding-bottom:8px;border-bottom:1px solid var(--line)}
@@ -225,6 +225,47 @@ html.locked .login{display:flex}
 .logout{appearance:none;border:1px solid var(--line);background:none;color:var(--ink-2);font:inherit;font-size:12.5px;border-radius:8px;padding:5px 10px;cursor:pointer;margin-left:10px}
 .logout:hover{border-color:var(--ink-3);color:var(--ink)}
 .logout:focus-visible{outline:2px solid var(--focus);outline-offset:2px}
+
+/* ===== адаптация под размер экрана ===== */
+.chip{max-width:100%;overflow-wrap:anywhere;text-align:left;min-height:36px}
+.block-h{flex-wrap:wrap}
+.actions{flex-wrap:wrap}
+.tools>*{max-width:100%}
+.stats{row-gap:12px}
+/* большие мониторы — шире рабочая область */
+@media (min-width:1400px){ main,.top-in,.tabs{max-width:1320px} .cols{grid-template-columns:minmax(0,460px) minmax(0,1fr)} }
+@media (min-width:1900px){ main,.top-in,.tabs{max-width:1560px} }
+.cols-2{grid-template-columns:minmax(0,1fr) minmax(0,1fr)}
+@media (max-width:700px){.cols-2{grid-template-columns:minmax(0,1fr)}}
+/* планшеты */
+@media (max-width:860px){ main{padding:18px 16px 36px} }
+/* телефоны */
+@media (max-width:600px){
+  main{padding:16px 14px 32px}
+  .top-in{padding:10px 14px 0}
+  .tabs{padding:6px 10px 0;gap:4px 0;flex-wrap:wrap;overflow:visible}
+  .tab{font-size:14px;padding:0 8px 9px}
+  .tabsep{display:none}
+  .bar-track{min-width:50px}
+  th,td{padding:8px 9px}
+  .who{font-size:12px}
+  .logout{padding:6px 10px;margin-left:8px}
+  .chip{font-size:14px;padding:8px 12px;min-height:40px}
+  .btn{min-height:46px}
+  .actions .btn{flex:1 1 auto}
+  .actions .sum{flex:1 1 100%;order:-1}
+  .tools{gap:8px}
+  .tools input[type=text],.tools input[type=month],.tools input[type=date],.tools select{flex:1 1 100%;width:100%;min-width:0}
+  .tools .btn{flex:1 1 auto}
+  .stats{gap:14px;padding:12px}
+  .stat .n{font-size:20px}
+  .stats>*{flex:1 1 28%}
+  .formgrid{grid-template-columns:repeat(2,minmax(0,1fr))}
+  .row{flex-wrap:wrap}
+  .row>*{flex:1 1 130px}
+  .login-card{padding:24px 18px}
+}
+@media (max-width:360px){ .tab{font-size:13.5px;padding:0 6px 9px} .stats>*{flex:1 1 40%} }
 </style>
 </head>
 <body>
@@ -914,7 +955,7 @@ function initTime(root){
   '</div>'+
   '<div class="block-h"><h2>Действия за день</h2><span class="note">строки сортируются по времени</span></div>'+
   '<div class="tbl-wrap" data-f="tblw"></div>'+
-  '<div class="cols" style="margin-top:24px;grid-template-columns:minmax(0,1fr) minmax(0,1fr)">'+
+  '<div class="cols cols-2" style="margin-top:24px">'+
     '<div><div class="block-h"><h2>Сводка времени за день</h2></div><div class="tbl-wrap" data-f="sumw"></div></div>'+
     '<div><div class="block-h"><h2>Результаты за день</h2><span class="note">вводятся руками</span></div><div class="tbl-wrap" data-f="resw"></div></div>'+
   '</div>';
