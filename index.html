@@ -352,6 +352,8 @@ var RESULT_FIELDS = [
 var S = { leads:[], deals:[], tlog:[], daily:[], results:{}, ovr:{} };
 var LS = "sebiston.sales.v2";
 var LS_MGR = "sebiston.mgr";
+/* кто вошёл на сайт — записывается в «Менеджер» для звонков и офиса */
+function authName(){ try{ var a=JSON.parse(localStorage.getItem("sb_auth")||"null"); return a&&a.n?a.n:""; }catch(e){ return ""; } }
 var db=null, userCap=null, dlCap=null;
 
 function lsGet(k){ try{return localStorage.getItem(k);}catch(e){return null;} }
@@ -552,13 +554,9 @@ function leadPanel(mode){
       '<div><label class="lbl">Дата</label><input type="date" data-f="meetDate"></div>'+
       '<div><label class="lbl">Время</label><input type="time" data-f="meetTime"></div></div></div>'+
     (isOffice ?
-      '<div class="field" style="margin-top:14px"><label class="lbl">Последнее решение</label><input type="text" data-f="decision" placeholder="например: берёт паузу до конца недели"></div>'+
-      '<div class="field"><label class="lbl">Обратная связь</label><input type="text" data-f="feedback"></div>' : '')+
+      '<div class="field" style="margin-top:14px"><label class="lbl">Последнее решение</label><input type="text" data-f="decision" placeholder="например: берёт паузу до конца недели"></div>' : '')+
     '<div class="field" style="margin-top:14px"><label class="lbl">Примечание</label><textarea data-f="note" placeholder="Что важно помнить к следующему разговору"></textarea></div>'+
   '</div>'+
-
-  '<div class="block"><div class="block-h"><h2>Кто принял</h2><span class="note">запомнится до конца смены</span></div>'+
-    chipsHTML("mgr", MGRS, "")+'<p class="err" data-f="e-mgr" hidden>Выберите, кто принял клиента</p></div>'+
 
   '<div class="block"><div class="block-h"><h2>Дата и время контакта</h2><span class="note">подставлены автоматически</span></div>'+
     '<div class="row"><div><label class="lbl">Дата</label><input type="date" data-f="dt"></div>'+
@@ -626,7 +624,6 @@ function initLeadPanel(root, mode){
     var miss=[];
     if(!elFio.value.trim()) miss.push("имя");
     if(digits(elTel.value).length<9) miss.push("телефон");
-    if(!gv(root,"mgr")) miss.push("менеджера");
     if(miss.length){ f(root,"sum").textContent="Заполните "+miss.join(", "); return; }
     var o=gvs(root,"obj");
     f(root,"sum").textContent = (gv(root,"stage")||"Потенциальный")+(o.length?" · "+o.join(", "):"")+(f(root,"meet").checked?" · встреча назначена":"");
@@ -651,9 +648,6 @@ function initLeadPanel(root, mode){
     var ok=true, first=null;
     if(!elFio.value.trim()){ elFio.setAttribute("aria-invalid","true"); f(root,"e-fio").hidden=false; ok=false; first=elFio; }
     if(digits(elTel.value).length<9){ elTel.setAttribute("aria-invalid","true"); f(root,"e-tel").hidden=false; ok=false; first=first||elTel; }
-    var g=root.querySelector('[data-g="mgr"]');
-    if(!gv(root,"mgr")){ g.classList.add("invalid"); f(root,"e-mgr").hidden=false; ok=false; first=first||g; }
-    else { g.classList.remove("invalid"); f(root,"e-mgr").hidden=true; }
     if(!ok){ if(first){ first.scrollIntoView({block:"center",behavior:"smooth"}); try{first.focus({preventScroll:true});}catch(e){} } toast("Не хватает данных"); return; }
 
     var waSame=f(root,"waSame").checked;
@@ -669,10 +663,10 @@ function initLeadPanel(root, mode){
       meetDate: f(root,"meet").checked ? f(root,"meetDate").value : "",
       meetTime: f(root,"meet").checked ? f(root,"meetTime").value : "",
       meetHeld: false,
-      decision: fv(root,"decision"), feedback: fv(root,"feedback"),
-      note: fv(root,"note"), mgr: gv(root,"mgr"), createdAt: new Date().toISOString()
+      decision: fv(root,"decision"),
+      note: fv(root,"note"), mgr: authName(), createdAt: new Date().toISOString()
     };
-    S.leads.unshift(rec); persist(); lsSet(LS_MGR, rec.mgr);
+    S.leads.unshift(rec); persist();
     renderList(); reset(rec.mgr);
     root.querySelector(".formside").scrollIntoView({block:"start",behavior:"smooth"});
     toast("Клиент записан: "+rec.fio);
@@ -686,11 +680,11 @@ function initLeadPanel(root, mode){
     if(!rows.length){ toast("Нечего выгружать"); return; }
     var head = ["№","Дата","Время","Источник","ФИО","Телефон","WhatsApp","Город","Тема вопроса","Объект",
                 "Площадь от","Площадь до","Этаж","Бюджет $","Этап","Причина отказа","Встреча дата","Встреча время","Встреча проведена"]
-                .concat(isOffice?["Последнее решение","Обратная связь"]:[]).concat(["Примечание","Менеджер"]);
+                .concat(isOffice?["Последнее решение"]:[]).concat(["Примечание","Менеджер"]);
     var body = rows.map(function(l,i){
       var base=[i+1,l.date,l.time,l.src,l.fio,l.tel,l.wa,l.city,l.topic,(l.objects||[]).join(" / "),
                 l.sqFrom,l.sqTo,l.floor,l.budget,l.stage,l.reject,l.meetDate,l.meetTime,l.meetHeld?"да":""];
-      if(isOffice) base=base.concat([l.decision||"",l.feedback||""]);
+      if(isOffice) base=base.concat([l.decision||""]);
       return base.concat([l.note,l.mgr]);
     });
     download("sebiston-"+(isOffice?"ofis":"zvonki")+"-"+todayISO()+".csv", csvText(head, body));
