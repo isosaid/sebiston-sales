@@ -421,10 +421,12 @@ function openDD(k,anchor){
 function closeDD(){ $("#dd").classList.remove("on"); $("#ddCatch").classList.remove("on"); ddKey=null; render(); }
 $("#ddCatch").addEventListener("click",closeDD);
 
-/* ---------- sending visits ----------
-   Put your Bitrix24 incoming webhook (crm.lead.add) here, e.g.
-   "https://YOUR.bitrix24.tj/rest/1/XXXXXXXX/crm.lead.add.json"
-   While it is empty, visits are only kept in this browser's queue (localStorage). */
+/* ---------- отправка визитов ----------
+   Визиты уходят в тот же Google Apps Script, что и основное приложение,
+   в лист «Визиты». При плохом интернете они копятся в очереди (localStorage)
+   и досылаются сами. BITRIX_WEBHOOK можно вписать позже — тогда визит
+   продублируется и в Битрикс как лид (crm.lead.add). */
+const SHEET_API="https://script.google.com/macros/s/AKfycbwks7urRdEQoYMv50LhP5YDIWNcMUBQ8n-CxYqG590dCWd8Zzv_gAmT_2sDPI2hCAdG/exec";
 const CONFIG={ BITRIX_WEBHOOK:"" };
 const ROLE_RU={buyer:"Покупатель",client:"Клиент",broker:"Брокер",partner:"Партнёр"};
 const QKEY="sebiston_visit_queue";
@@ -435,23 +437,39 @@ function buildVisit(){
   const goal = data.goal!=null ? ru.goals[role][data.goal] : "";
   const dir  = data.dir!=null ? ru.dirs[data.dir] : "";
   const who  = verified ? DEMO_PROFILE[role].name : data.name.trim();
+  const id   = Date.now()+"-"+Math.random().toString(36).slice(2,7);
+  const phone= "+992"+digits(data.phone);
   const lines=[ "Роль: "+ROLE_RU[role], (role!=="buyer"?"Режим: "+(isReg?"уже зарегистрирован":"первый визит"):""),
     data.jk.length?"Интересующие ЖК: "+data.jk.join(", "):"", goal?"Цель визита: "+goal:"",
     data.agency?"Агентство: "+data.agency:"", data.company?"Компания: "+data.company:"", dir?"Направление: "+dir:"",
     "Язык интерфейса: "+lang.toUpperCase(), "Время визита: "+new Date().toISOString() ].filter(Boolean);
-  return { id:Date.now()+"-"+Math.random().toString(36).slice(2,7),
+  return { id:id,
+    /* плоская запись для листа «Визиты» в Google-таблице */
+    v:{ id:id, at:new Date().toISOString(), role:ROLE_RU[role],
+        mode: role!=="buyer" ? (isReg?"уже зарегистрирован":"первый визит") : "",
+        name:who, phone:phone, email:data.email?data.email.trim():"",
+        jk:(data.jk||[]).slice(), goal:goal, agency:data.agency||"", company:data.company||"",
+        dir:dir, lang:lang.toUpperCase() },
+    /* запасной формат — если позже впишут BITRIX_WEBHOOK (crm.lead.add) */
     fields:{ TITLE:"Визит в офис: "+ROLE_RU[role]+" — "+(who||data.phone), NAME:who,
-      PHONE:[{VALUE:"+992"+digits(data.phone),VALUE_TYPE:"WORK"}],
+      PHONE:[{VALUE:phone,VALUE_TYPE:"WORK"}],
       ...(data.email?{EMAIL:[{VALUE:data.email.trim(),VALUE_TYPE:"WORK"}]}:{}),
       SOURCE_DESCRIPTION:"Киоск регистрации визита", COMMENTS:lines.join("\n") } };
 }
 async function sendOne(v){
-  if(!CONFIG.BITRIX_WEBHOOK) return false;
-  try{ const r=await fetch(CONFIG.BITRIX_WEBHOOK,{method:"POST",headers:{"Content-Type":"application/json"},body:JSON.stringify({fields:v.fields,params:{REGISTER_SONET_EVENT:"N"}})});
-       const j=await r.json(); return !!(r.ok&&j&&j.result); }catch(e){ return false; }
+  let okSheet=false;
+  if(SHEET_API){
+    try{ const r=await fetch(SHEET_API,{method:"POST",headers:{"Content-Type":"text/plain;charset=utf-8"},body:JSON.stringify({a:"visit",v:v.v})});
+         const j=await r.json(); okSheet=!!(r.ok&&j&&j.ok); }catch(e){ okSheet=false; }
+  }
+  if(CONFIG.BITRIX_WEBHOOK){
+    try{ await fetch(CONFIG.BITRIX_WEBHOOK,{method:"POST",headers:{"Content-Type":"application/json"},body:JSON.stringify({fields:v.fields,params:{REGISTER_SONET_EVENT:"N"}})}); }catch(e){}
+  }
+  /* успехом считаем запись в таблицу; если таблица не задана — ориентируемся на Битрикс */
+  return SHEET_API ? okSheet : false;
 }
 let flushing=false;
-async function flush(){ if(flushing||!CONFIG.BITRIX_WEBHOOK) return; flushing=true;
+async function flush(){ if(flushing||!(SHEET_API||CONFIG.BITRIX_WEBHOOK)) return; flushing=true;
   try{ let q=getQ(); const rest=[]; for(const v of q){ if(!(await sendOne(v))) rest.push(v); } setQ(rest); }finally{ flushing=false; } }
 addEventListener("online",flush); setInterval(flush,60000); flush();
 
