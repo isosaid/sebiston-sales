@@ -51,6 +51,21 @@ button{cursor:pointer;border:0;background:none;text-align:inherit}
 #splash .bld{position:absolute;left:-22px;right:-22px;top:196px;width:calc(100% + 44px);height:calc(100% - 196px);object-fit:cover;object-position:50% 0}
 #splash .arc{position:absolute;left:calc(50% - 475px);bottom:-792px;width:950px;height:950px;border-radius:50%;background:#fff}
 #splash .enter{position:absolute;left:0;right:0;bottom:69px;text-align:center;font:600 30px/30px Inter,sans-serif;letter-spacing:-.6px;color:var(--ink)}
+/* ---------- Splash: оживление (постоянное движение + плавный вход) ---------- */
+#splash .biglogo{animation:sbLogoIn .9s cubic-bezier(.2,.8,.2,1) both, sbLogoFloat 5.5s ease-in-out 1s infinite}
+#splash .panel{transform-origin:50% 100%;animation:sbPanelIn .8s cubic-bezier(.2,.8,.2,1) both}
+#splash .bld{transform-origin:50% 42%;will-change:transform;animation:sbBldIn 1.1s ease .15s both, sbKenBurns 24s ease-in-out 1.3s infinite alternate}
+#splash .arc{animation:sbArcIn 1s cubic-bezier(.2,.8,.2,1) .2s both}
+#splash .enter{animation:sbEnterIn .6s ease .9s both, sbEnterPulse 2.6s ease-in-out 1.6s infinite}
+@keyframes sbLogoIn{from{opacity:0;transform:translateY(-26px)}to{opacity:1;transform:translateY(0)}}
+@keyframes sbLogoFloat{0%,100%{transform:translateY(0)}50%{transform:translateY(-9px)}}
+@keyframes sbPanelIn{from{opacity:0;transform:scaleY(.86)}to{opacity:1;transform:scaleY(1)}}
+@keyframes sbBldIn{from{opacity:0}to{opacity:1}}
+@keyframes sbKenBurns{0%{transform:scale(1) translate(0,0)}100%{transform:scale(1.07) translate(-1.1%,-1%)}}
+@keyframes sbArcIn{from{opacity:0;transform:translateY(60px)}to{opacity:1;transform:translateY(0)}}
+@keyframes sbEnterIn{from{opacity:0;transform:translateY(12px)}to{opacity:1;transform:translateY(0)}}
+@keyframes sbEnterPulse{0%,100%{opacity:.78;transform:scale(1)}50%{opacity:1;transform:scale(1.06)}}
+@media (prefers-reduced-motion:reduce){#splash .biglogo,#splash .panel,#splash .bld,#splash .arc,#splash .enter{animation:none}}
 
 #attract{position:absolute;inset:0;z-index:30;background:#000;opacity:0;visibility:hidden;transition:opacity .6s ease,visibility .6s;cursor:pointer}
 #attract.on{opacity:1;visibility:visible}
