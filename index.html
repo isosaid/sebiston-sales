@@ -100,6 +100,10 @@ input[aria-invalid="true"]{border-color:var(--red);background:var(--red-soft)}
 .chip:hover{border-color:var(--ink-3)}
 .chip:focus-visible{outline:2px solid var(--focus);outline-offset:2px}
 .chip[aria-pressed="true"]{background:var(--green-soft);border-color:var(--green);color:var(--green-d);font-weight:600}
+/* вкладка «Визиты» — крупные кнопки */
+#p-visits .chips{gap:10px}
+#p-visits .chip{font-size:16px;padding:13px 22px;min-height:50px;font-weight:600}
+#p-visits .chip[aria-pressed="true"]{font-weight:700}
 .chip.hot[aria-pressed="true"]{background:var(--amber-soft);border-color:var(--amber);color:var(--amber)}
 .chip.no[aria-pressed="true"]{background:var(--red-soft);border-color:var(--red);color:var(--red)}
 .chips.invalid{outline:2px solid var(--red);outline-offset:4px;border-radius:12px}
