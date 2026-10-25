@@ -469,6 +469,7 @@ window.SB_API="https://script.google.com/macros/s/AKfycbwAwrts4_R3JlbBpfUKtaGtwR
     <button class="tab" role="tab" data-p="time"   aria-selected="false">Хронометраж</button>
     <span class="tabsep adm" aria-hidden="true" hidden></span>
     <button class="tab adm" role="tab" data-p="stats"  aria-selected="false" hidden>Статистика</button>
+    <button class="tab adm" role="tab" data-p="visits" aria-selected="false" hidden>Визиты</button>
   </nav>
 </header>
 
@@ -481,6 +482,7 @@ window.SB_API="https://script.google.com/macros/s/AKfycbwAwrts4_R3JlbBpfUKtaGtwR
   <section class="panel" id="p-time"   role="tabpanel" hidden></section>
   <section class="panel" id="p-rday"   role="tabpanel" hidden></section>
   <section class="panel" id="p-stats"  role="tabpanel" hidden></section>
+  <section class="panel" id="p-visits" role="tabpanel" hidden></section>
 </main>
 
 <div class="toast" id="toast" role="status" aria-live="polite"></div>
@@ -1156,6 +1158,74 @@ window.sbLogout=function(){
   if(API && t) try{ fetch(API,{method:"POST",headers:{"Content-Type":"text/plain;charset=utf-8"},body:JSON.stringify({a:"logout",t:t}),keepalive:true}); }catch(e){}
   if(API && !outbox().length) try{ localStorage.removeItem(LS); }catch(e){}   // на общем компьютере не оставляем данные после выхода
 };
+
+function initVisits(root){
+  root.innerHTML =
+  '<p class="lede">Регистрация визитов с киоска <b>/visit/</b>. Данные приходят из листа «Визиты» в общей базе — обновляются при каждом заходе на вкладку. Отфильтруйте по периоду и выгрузите в Excel или Word.</p>'+
+  filterBarHTML("Поиск по имени, телефону, роли, ЖК, цели", expBtns())+
+  '<div class="stats" data-f="stats"></div>'+
+  '<div class="tbl-wrap" data-f="tblw"></div>';
+  var ROWS=[], loaded=false, loading=false;
+  var flt=bindFilter(root, draw, "month");
+
+  function pick(){
+    var F=flt.get(), q=normTxt(F.q||"").trim();
+    return ROWS.filter(function(v){
+      var d=(v.at||"").slice(0,10);
+      if(!inRange(d, F.from, F.to)) return false;
+      if(!q) return true;
+      return normTxt([v.name,v.phone,v.role,v.jk,v.goal,v.company,v.agency].join(" ")).indexOf(q)>=0;
+    });
+  }
+  function draw(){
+    var rr=pick(), byRole={};
+    rr.forEach(function(v){ var r=v.role||"—"; byRole[r]=(byRole[r]||0)+1; });
+    f(root,"stats").innerHTML=
+      '<div class="stat"><div class="n">'+rr.length+'</div><div class="t">визитов</div></div>'+
+      '<div class="stat"><div class="n">'+(byRole["Покупатель"]||0)+'</div><div class="t">покупателей</div></div>'+
+      '<div class="stat"><div class="n">'+(byRole["Клиент"]||0)+'</div><div class="t">клиентов</div></div>'+
+      '<div class="stat"><div class="n">'+(byRole["Брокер"]||0)+'</div><div class="t">брокеров</div></div>'+
+      '<div class="stat"><div class="n">'+(byRole["Партнёр"]||0)+'</div><div class="t">партнёров</div></div>';
+    flt.meta(rr.length, ROWS.length);
+    var w=f(root,"tblw");
+    if(loading && !loaded){ w.innerHTML='<div class="empty" style="border:0"><b>Загружаю визиты…</b></div>'; return; }
+    if(!rr.length){ w.innerHTML='<div class="empty" style="border:0"><b>Визитов нет</b>'+(loaded?'Измените период или запрос.':'Пока ни одного визита.')+'</div>'; return; }
+    w.innerHTML='<table><thead><tr><th>Дата/время</th><th>Роль</th><th>Режим</th><th>ФИО</th><th>Телефон</th><th>Email</th>'+
+      '<th>Интересующие ЖК</th><th>Цель визита</th><th>Агентство</th><th>Компания</th><th>Язык</th></tr></thead><tbody>'+
+      rr.map(function(v){
+        return '<tr><td style="white-space:nowrap">'+esc(v.at)+'</td><td>'+esc(v.role)+'</td><td>'+esc(v.mode||"—")+'</td>'+
+        '<td>'+esc(v.name)+'</td><td style="white-space:nowrap"><a href="tel:'+esc(String(v.phone||"").replace(/[^0-9+]/g,""))+'">'+esc(v.phone)+'</a></td>'+
+        '<td class="wrap">'+esc(v.email||"—")+'</td><td class="wrap">'+esc(v.jk||"—")+'</td><td class="wrap">'+esc(v.goal||"—")+'</td>'+
+        '<td>'+esc(v.agency||"—")+'</td><td>'+esc(v.company||"—")+'</td><td>'+esc(v.lang||"—")+'</td></tr>';
+      }).join("")+'</tbody></table>';
+  }
+  function load(){
+    if(loading) return; loading=true; if(!loaded) draw();
+    api("visits_list").then(function(j){
+      loaded=true; loading=false;
+      if(j && j.ok && Array.isArray(j.visits)){
+        ROWS=j.visits.slice().sort(function(a,b){ return String(b.at||"").localeCompare(String(a.at||"")); });
+      }
+      draw();
+    }).catch(function(){
+      loaded=true; loading=false;
+      f(root,"tblw").innerHTML='<div class="empty" style="border:0"><b>Не удалось загрузить визиты</b>Проверьте связь и зайдите на вкладку ещё раз.</div>';
+    });
+  }
+  bindExport(root, function(){
+    var rr=pick(); if(!rr.length){ toast("Нечего выгружать"); return null; }
+    var g=flt.get();
+    var meta=[["Период",periodLabel(g.from,g.to)],["Всего визитов",rr.length]]; if(g.q.trim()) meta.push(["Поиск",g.q.trim()]);
+    var cols=[{h:"Дата/время",w:16},{h:"Роль",w:12},{h:"Режим",w:16},{h:"ФИО",w:20},{h:"Телефон",w:15},{h:"Email",w:20},
+      {h:"Интересующие ЖК",w:30},{h:"Цель визита",w:22},{h:"Агентство",w:15},{h:"Компания",w:15},{h:"Направление",w:13},{h:"Язык",w:7}];
+    var rows=rr.map(function(v){ return [v.at,v.role,v.mode,v.name,v.phone,v.email,v.jk,v.goal,v.agency,v.company,v.dir,v.lang]; });
+    return { title:"Визиты в офис", file:"Sebiston — Визиты — "+periodLabel(g.from,g.to), meta:meta, signLeft:"Составил",
+      kpis:[["всего визитов",rr.length]],
+      tables:[{sheet:"Визиты",heading:"Визиты в офис",cols:cols,rows:rows}] };
+  });
+  root._render=load;   /* при каждом заходе на вкладку — свежие визиты */
+  load();
+}
 
 /* ==================================================================
    ВКЛАДКИ 1–2 · ЗВОНКИ И ОФИС
@@ -2595,7 +2665,8 @@ var PANELS = {
   sales: {node:$("p-sales"),  init:initSales},
   time:  {node:$("p-time"),   init:initTime},
   rday:  {node:$("p-rday"),   init:initRDay},
-  stats: {node:$("p-stats"),  init:initStats}
+  stats: {node:$("p-stats"),  init:initStats},
+  visits:{node:$("p-visits"), init:initVisits}
 };
 var current="call";
 function open(key){
