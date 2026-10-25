@@ -1241,6 +1241,16 @@ function initVisits(root){
       jk:(v.jk?String(v.jk).split(/,\s*/).filter(Boolean):[]), goal:v.goal, agency:v.agency,
       company:v.company, dir:v.dir, lang:v.lang, upAt:v.upAt||"", upBy:v.upBy||"" };
   }
+  function normAt(a){
+    if(!a) return "";
+    a=String(a);
+    var m=a.match(/^(\d{4})-(\d{2})-(\d{2})[ T](\d{2}):(\d{2})/);
+    if(m) return m[1]+"-"+m[2]+"-"+m[3]+" "+m[4]+":"+m[5];
+    if(/^\d{4}-\d{2}-\d{2}$/.test(a)) return a;
+    var d=new Date(a);
+    if(!isNaN(d.getTime())) return d.getFullYear()+"-"+pad(d.getMonth()+1)+"-"+pad(d.getDate())+" "+pad(d.getHours())+":"+pad(d.getMinutes());
+    return a;
+  }
   function sortRows(){ ROWS.sort(function(a,b){ return String(b.at||"").localeCompare(String(a.at||"")); }); }
   function vUpd(v){ return v.upAt ? '<span class="upd">изм. '+esc(fmtDate(String(v.upAt).slice(0,10)))+(v.upBy?' · '+esc(v.upBy):'')+'</span>' : ''; }
 
@@ -1343,7 +1353,7 @@ function initVisits(root){
     if(loading) return; loading=true; if(!loaded) draw();
     api("visits_list").then(function(j){
       loaded=true; loading=false;
-      if(j && j.ok && Array.isArray(j.visits)){ ROWS=j.visits.slice(); sortRows(); }
+      if(j && j.ok && Array.isArray(j.visits)){ ROWS=j.visits.map(function(v){ v.at=normAt(v.at); return v; }); sortRows(); }
       draw();
     }).catch(function(){
       loaded=true; loading=false;
