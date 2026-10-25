@@ -1160,21 +1160,154 @@ window.sbLogout=function(){
 };
 
 function initVisits(root){
+  /* словарь киоска — чтобы поля в приложении совпадали с /visit/ */
+  var VIS_ROLES=["Покупатель","Клиент","Брокер","Партнёр"];
+  var VIS_MODES=["первый визит","уже зарегистрирован"];
+  var VIS_JK=["Бульвар Скандинавия","ADDRESS Residence","Varzob Riviera","GissarMall","Ахрори"];
+  var VIS_DIRS=["Спортивное партнёрство","Медиа и информационное партнерство","Коммерческое сотрудничество","Подрядчик или поставщик","Инвестиционное сотрудничество"];
+  var VIS_GOALS={
+    "Покупатель":["Узнать о жилых комплексах","Подобрать квартиру","Ознакомиться с условиями оплаты","Посмотреть планировки или объект","Забронировать квартиру","Подписать договор","Встретиться с менеджером"],
+    "Клиент":["Уточнить информацию по покупке","Обсудить график или внести оплату","Получить или оформить документы","Узнать о ходе строительства","Покупка новой квартиры","Встретиться с менеджером"],
+    "Брокер":["Зарегистрировать клиента","Подобрать квартиру для клиента","Сопроводить клиента","Обсудить условия сотрудничества","Уточнить наличие квартир и цены","Забронировать квартиру","Обсудить действующую сделку","Оформить или подписать документы","Встреча с руководством"],
+    "Партнёр":["Обсудить сотрудничество","Встреча по действующему проекту","Обсудить мероприятие или спонсорство","Передать или подписать документы"]
+  };
+  function visAllGoals(){ var s=[]; Object.keys(VIS_GOALS).forEach(function(r){ VIS_GOALS[r].forEach(function(g){ if(s.indexOf(g)<0) s.push(g); }); }); return s; }
+
   root.innerHTML =
-  '<p class="lede">Регистрация визитов с киоска <b>/visit/</b>. Данные приходят из листа «Визиты» в общей базе — обновляются при каждом заходе на вкладку. Отфильтруйте по периоду и выгрузите в Excel или Word.</p>'+
-  filterBarHTML("Поиск по имени, телефону, роли, ЖК, цели", expBtns())+
-  '<div class="stats" data-f="stats"></div>'+
-  '<div class="tbl-wrap" data-f="tblw"></div>';
-  var ROWS=[], loaded=false, loading=false;
+  '<p class="lede">Визиты приходят с киоска <b>/visit/</b>. Здесь их можно просматривать, вручную <b>добавить</b> или <b>исправить</b> (кнопка «изменить» в списке). Все правки <b>журналируются</b> — видно, кто и когда изменил. Фильтр по периоду и выгрузка в Excel/Word справа.</p>'+
+  '<div class="cols"><div class="formside">'+
+    '<div class="editbar" data-f="editbar" hidden><div><b>Редактирование визита</b> <span class="who2" data-f="editwho"></span></div>'+
+      '<button type="button" class="btn btn-ghost btn-sm" data-f="cancelEdit">Отменить правку</button></div>'+
+
+    '<div class="block"><div class="block-h"><h2>Кто пришёл</h2></div>'+
+      '<div class="field"><label class="lbl">Роль <span class="req">•</span></label>'+chipsHTML("vrole", VIS_ROLES, "Покупатель")+'</div>'+
+      '<div class="field"><label class="lbl">Режим</label>'+chipsHTML("vmode", VIS_MODES, "")+'<p class="hint">Для клиента/брокера/партнёра — первый визит или уже зарегистрирован.</p></div>'+
+    '</div>'+
+
+    '<div class="block"><div class="block-h"><h2>Посетитель</h2></div>'+
+      '<div class="field"><label class="lbl">ФИО <span class="req">•</span></label><input type="text" data-f="vname" autocomplete="name"><p class="err" data-f="e-vname" hidden>Укажите ФИО или телефон</p></div>'+
+      '<div class="field"><label class="lbl">Телефон</label><input type="tel" data-f="vphone" inputmode="tel" placeholder="+992 90 000 00 00"></div>'+
+      '<div class="field"><label class="lbl">Email</label><input type="email" data-f="vemail" inputmode="email" placeholder="name@mail.com"></div>'+
+    '</div>'+
+
+    '<div class="block"><div class="block-h"><h2>Интерес</h2></div>'+
+      '<div class="field"><label class="lbl">Интересующие ЖК</label>'+
+        '<div class="chips" data-g="vjk" data-multi="1" role="group">'+
+          VIS_JK.map(function(v){return '<button type="button" class="chip" data-v="'+esc(v)+'" aria-pressed="false">'+esc(v)+'</button>';}).join("")+
+        '</div><p class="hint">Можно отметить несколько.</p></div>'+
+      '<div class="field"><label class="lbl">Цель визита</label><input type="text" data-f="vgoal" list="visGoalsDL" placeholder="Выберите или впишите цель"></div>'+
+      '<div class="field"><label class="lbl">Направление партнёрства</label><input type="text" data-f="vdir" list="visDirsDL" placeholder="Для партнёров"></div>'+
+    '</div>'+
+
+    '<div class="block"><div class="block-h"><h2>Организация</h2></div>'+
+      '<div class="field"><label class="lbl">Агентство</label><input type="text" data-f="vagency" placeholder="Для брокеров"></div>'+
+      '<div class="field"><label class="lbl">Компания</label><input type="text" data-f="vcompany" placeholder="Для партнёров"></div>'+
+      '<div class="field"><label class="lbl">Язык анкеты</label>'+chipsHTML("vlang", ["RU","TJ"], "RU")+'</div>'+
+    '</div>'+
+
+    '<div class="block"><div class="block-h"><h2>Дата и время визита</h2></div>'+
+      '<div class="row"><div><label class="lbl">Дата</label><input type="date" data-f="vdt"></div>'+
+      '<div><label class="lbl">Время</label><input type="time" data-f="vtm"></div></div></div>'+
+
+    '<div class="actions"><div class="sum" data-f="vsum"></div>'+
+      '<button class="btn btn-ghost" data-f="vclear" type="button">Очистить</button>'+
+      '<button class="btn btn-main" data-f="save" type="button">Сохранить визит</button></div>'+
+
+  '</div><div class="listside">'+
+    '<div class="stats" data-f="stats"></div>'+
+    filterBarHTML("Имя, телефон, роль, ЖК, цель, направление…", expBtns())+
+    '<div class="tbl-wrap" data-f="tblw"></div>'+
+  '</div></div>'+
+  '<datalist id="visGoalsDL"></datalist><datalist id="visDirsDL">'+VIS_DIRS.map(function(d){return '<option value="'+esc(d)+'">';}).join("")+'</datalist>';
+
+  bindChips(root);
+  var ROWS=[], loaded=false, loading=false, editing=null;
   var flt=bindFilter(root, draw, "month");
+
+  function refreshGoals(){
+    var role=gv(root,"vrole")||"Покупатель", list=VIS_GOALS[role]||visAllGoals();
+    var dl=document.getElementById("visGoalsDL"); if(dl) dl.innerHTML=list.map(function(g){return '<option value="'+esc(g)+'">';}).join("");
+  }
+  function summary(){
+    var who=fv(root,"vname")||fv(root,"vphone");
+    f(root,"vsum").textContent = who ? ((gv(root,"vrole")||"Покупатель")+" · "+who) : "Укажите ФИО или телефон";
+  }
+  root.addEventListener("chipchange", function(ev){ if(ev.detail.group==="vrole") refreshGoals(); summary(); });
+  f(root,"vname").addEventListener("input", function(){ f(root,"e-vname").hidden=true; summary(); });
+  f(root,"vphone").addEventListener("input", summary);
+
+  function rowToV(v){
+    return { id:v.id, at:v.at, role:v.role, mode:v.mode, name:v.name, phone:v.phone, email:v.email,
+      jk:(v.jk?String(v.jk).split(/,\s*/).filter(Boolean):[]), goal:v.goal, agency:v.agency,
+      company:v.company, dir:v.dir, lang:v.lang, upAt:v.upAt||"", upBy:v.upBy||"" };
+  }
+  function sortRows(){ ROWS.sort(function(a,b){ return String(b.at||"").localeCompare(String(a.at||"")); }); }
+  function vUpd(v){ return v.upAt ? '<span class="upd">изм. '+esc(fmtDate(String(v.upAt).slice(0,10)))+(v.upBy?' · '+esc(v.upBy):'')+'</span>' : ''; }
+
+  function reset(){
+    ["vname","vphone","vemail","vgoal","vdir","vagency","vcompany"].forEach(function(n){ var e=f(root,n); if(e) e.value=""; });
+    gset(root,"vrole","Покупатель"); gset(root,"vmode",""); gset(root,"vlang","RU");
+    Array.prototype.forEach.call(root.querySelectorAll('[data-g="vjk"] .chip'),function(c){c.setAttribute("aria-pressed","false");});
+    f(root,"vdt").value=todayISO(); f(root,"vtm").value=nowHM();
+    f(root,"e-vname").hidden=true;
+    editing=null; f(root,"editbar").hidden=true; f(root,"save").textContent="Сохранить визит";
+    refreshGoals(); summary();
+  }
+  function loadRec(v){
+    reset(); editing=v.id;
+    gset(root,"vrole",v.role||"Покупатель"); refreshGoals();
+    gset(root,"vmode",v.mode||"");
+    f(root,"vname").value=v.name||""; f(root,"vphone").value=v.phone||""; f(root,"vemail").value=v.email||"";
+    var jkArr=v.jk?String(v.jk).split(/,\s*/):[];
+    Array.prototype.forEach.call(root.querySelectorAll('[data-g="vjk"] .chip'),function(c){ c.setAttribute("aria-pressed", jkArr.indexOf(c.dataset.v)>=0?"true":"false"); });
+    f(root,"vgoal").value=v.goal||""; f(root,"vdir").value=v.dir||"";
+    f(root,"vagency").value=v.agency||""; f(root,"vcompany").value=v.company||"";
+    gset(root,"vlang",v.lang||"RU");
+    var ad=String(v.at||"").replace("T"," ");
+    f(root,"vdt").value=ad.slice(0,10)||todayISO(); f(root,"vtm").value=ad.slice(11,16)||nowHM();
+    f(root,"editwho").textContent="· "+(v.name||v.phone||"")+(v.upBy?" · правил "+v.upBy:"");
+    f(root,"editbar").hidden=false; f(root,"save").textContent="Сохранить изменения";
+    summary();
+    root.querySelector(".formside").scrollIntoView({block:"start",behavior:"smooth"});
+  }
+  f(root,"cancelEdit").addEventListener("click", function(){ reset(); draw(); toast("Правка отменена"); });
+  f(root,"vclear").addEventListener("click", function(){ var was=!!editing; reset(); if(was) draw(); toast("Форма очищена"); });
+
+  f(root,"save").addEventListener("click", function(){
+    var name=fv(root,"vname"), phone=fv(root,"vphone");
+    if(!name && !phone){ f(root,"e-vname").hidden=false; var e=f(root,"vname"); try{e.focus();}catch(x){} toast("Нужно ФИО или телефон"); return; }
+    var jk=gvs(root,"vjk");
+    var at=(fv(root,"vdt")||todayISO())+" "+(fv(root,"vtm")||nowHM());
+    var v={ id: editing||uid(), at:at, role:gv(root,"vrole")||"Покупатель", mode:gv(root,"vmode"),
+      name:name, phone:phone, email:fv(root,"vemail"), jk:jk, goal:fv(root,"vgoal"),
+      agency:fv(root,"vagency"), company:fv(root,"vcompany"), dir:fv(root,"vdir"), lang:gv(root,"vlang")||"RU" };
+    if(editing){ v.upAt=new Date().toISOString(); v.upBy=authName(); }
+    var row=Object.assign({}, v, { jk: jk.join(", ") });
+    var idx=ROWS.findIndex(function(x){return x.id===v.id;});
+    if(idx>=0) ROWS[idx]=row; else { ROWS.unshift(row); flt.show(at.slice(0,10)); }
+    sortRows();
+    api("visit",{v:v}).then(function(j){ if(!(j&&j.ok)) toast("Не сохранилось на сервере — проверьте связь"); }).catch(function(){ toast("Нет связи с базой"); });
+    toast(editing?("Визит изменён: "+(name||phone)):("Визит добавлен: "+(name||phone)));
+    reset(); draw();
+    root.querySelector(".formside").scrollIntoView({block:"start",behavior:"smooth"});
+  });
+
+  function delVisit(v){
+    if(!canDelete()){ toast("Удалять визиты может только руководитель. Ошибку можно исправить кнопкой «изменить»"); return; }
+    var i=ROWS.findIndex(function(x){return x.id===v.id;}); if(i<0) return;
+    if(editing===v.id) reset();
+    ROWS.splice(i,1); draw();
+    api("visit_del",{id:v.id}).catch(function(){});
+    toastUndo("Визит удалён", function(){ ROWS.splice(Math.min(i,ROWS.length),0,v); sortRows(); draw(); api("visit",{v:rowToV(v)}).catch(function(){}); });
+  }
 
   function pick(){
     var F=flt.get(), q=normTxt(F.q||"").trim();
     return ROWS.filter(function(v){
-      var d=(v.at||"").slice(0,10);
+      var d=String(v.at||"").slice(0,10);
       if(!inRange(d, F.from, F.to)) return false;
       if(!q) return true;
-      return normTxt([v.name,v.phone,v.role,v.jk,v.goal,v.company,v.agency].join(" ")).indexOf(q)>=0;
+      return normTxt([v.name,v.phone,v.role,v.jk,v.goal,v.company,v.agency,v.dir,v.email].join(" ")).indexOf(q)>=0;
     });
   }
   function draw(){
@@ -1188,24 +1321,29 @@ function initVisits(root){
       '<div class="stat"><div class="n">'+(byRole["Партнёр"]||0)+'</div><div class="t">партнёров</div></div>';
     flt.meta(rr.length, ROWS.length);
     var w=f(root,"tblw");
+    if(!w.classList.contains("tbl-wrap")){ var nw=el('<div class="tbl-wrap" data-f="tblw"></div>'); w.parentNode.replaceChild(nw,w); w=nw; }
     if(loading && !loaded){ w.innerHTML='<div class="empty" style="border:0"><b>Загружаю визиты…</b></div>'; return; }
-    if(!rr.length){ w.innerHTML='<div class="empty" style="border:0"><b>Визитов нет</b>'+(loaded?'Измените период или запрос.':'Пока ни одного визита.')+'</div>'; return; }
+    if(!rr.length){ w.innerHTML='<div class="empty" style="border:0"><b>Визитов нет</b>'+(loaded?(ROWS.length?'Измените период или запрос.':'Добавьте визит слева или зарегистрируйте на киоске /visit/.'):'Пока ни одного визита.')+'</div>'; return; }
     w.innerHTML='<table><thead><tr><th>Дата/время</th><th>Роль</th><th>Режим</th><th>ФИО</th><th>Телефон</th><th>Email</th>'+
-      '<th>Интересующие ЖК</th><th>Цель визита</th><th>Агентство</th><th>Компания</th><th>Язык</th></tr></thead><tbody>'+
+      '<th>Интересующие ЖК</th><th>Цель визита</th><th>Агентство</th><th>Компания</th><th>Направление</th><th>Язык</th><th></th></tr></thead><tbody>'+
       rr.map(function(v){
-        return '<tr><td style="white-space:nowrap">'+esc(v.at)+'</td><td>'+esc(v.role)+'</td><td>'+esc(v.mode||"—")+'</td>'+
-        '<td>'+esc(v.name)+'</td><td style="white-space:nowrap"><a href="tel:'+esc(String(v.phone||"").replace(/[^0-9+]/g,""))+'">'+esc(v.phone)+'</a></td>'+
+        return '<tr'+(v.id===editing?' class="editing"':'')+'><td style="white-space:nowrap">'+esc(v.at)+vUpd(v)+'</td><td>'+esc(v.role)+'</td><td>'+esc(v.mode||"—")+'</td>'+
+        '<td>'+esc(v.name||"—")+'</td><td style="white-space:nowrap"><a href="tel:'+esc(String(v.phone||"").replace(/[^0-9+]/g,""))+'">'+esc(v.phone||"—")+'</a></td>'+
         '<td class="wrap">'+esc(v.email||"—")+'</td><td class="wrap">'+esc(v.jk||"—")+'</td><td class="wrap">'+esc(v.goal||"—")+'</td>'+
-        '<td>'+esc(v.agency||"—")+'</td><td>'+esc(v.company||"—")+'</td><td>'+esc(v.lang||"—")+'</td></tr>';
+        '<td>'+esc(v.agency||"—")+'</td><td>'+esc(v.company||"—")+'</td><td class="wrap">'+esc(v.dir||"—")+'</td><td>'+esc(v.lang||"—")+'</td>'+
+        '<td class="rowact"><button class="lnk ed" data-edit="'+esc(v.id)+'">изменить</button>'+(canDelete()?'<button class="lnk" data-del="'+esc(v.id)+'">удалить</button>':'')+'</td></tr>';
       }).join("")+'</tbody></table>';
+    w.onclick=function(ev){
+      var e=ev.target.closest("[data-edit]"), d=ev.target.closest("[data-del]");
+      if(e){ var R=ROWS.find(function(x){return x.id===e.dataset.edit;}); if(R) loadRec(R); return; }
+      if(d){ var D=ROWS.find(function(x){return x.id===d.dataset.del;}); if(D) delVisit(D); }
+    };
   }
   function load(){
     if(loading) return; loading=true; if(!loaded) draw();
     api("visits_list").then(function(j){
       loaded=true; loading=false;
-      if(j && j.ok && Array.isArray(j.visits)){
-        ROWS=j.visits.slice().sort(function(a,b){ return String(b.at||"").localeCompare(String(a.at||"")); });
-      }
+      if(j && j.ok && Array.isArray(j.visits)){ ROWS=j.visits.slice(); sortRows(); }
       draw();
     }).catch(function(){
       loaded=true; loading=false;
@@ -1217,13 +1355,14 @@ function initVisits(root){
     var g=flt.get();
     var meta=[["Период",periodLabel(g.from,g.to)],["Всего визитов",rr.length]]; if(g.q.trim()) meta.push(["Поиск",g.q.trim()]);
     var cols=[{h:"Дата/время",w:16},{h:"Роль",w:12},{h:"Режим",w:16},{h:"ФИО",w:20},{h:"Телефон",w:15},{h:"Email",w:20},
-      {h:"Интересующие ЖК",w:30},{h:"Цель визита",w:22},{h:"Агентство",w:15},{h:"Компания",w:15},{h:"Направление",w:13},{h:"Язык",w:7}];
+      {h:"Интересующие ЖК",w:30},{h:"Цель визита",w:22},{h:"Агентство",w:15},{h:"Компания",w:15},{h:"Направление",w:16},{h:"Язык",w:7}];
     var rows=rr.map(function(v){ return [v.at,v.role,v.mode,v.name,v.phone,v.email,v.jk,v.goal,v.agency,v.company,v.dir,v.lang]; });
     return { title:"Визиты в офис", file:"Sebiston — Визиты — "+periodLabel(g.from,g.to), meta:meta, signLeft:"Составил",
       kpis:[["всего визитов",rr.length]],
       tables:[{sheet:"Визиты",heading:"Визиты в офис",cols:cols,rows:rows}] };
   });
   root._render=load;   /* при каждом заходе на вкладку — свежие визиты */
+  reset();
   load();
 }
 
