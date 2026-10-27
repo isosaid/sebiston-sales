@@ -1243,7 +1243,8 @@ function initVisits(root){
   function rowToV(v){
     return { id:v.id, at:v.at, role:v.role, mode:v.mode, name:v.name, phone:v.phone, email:v.email,
       jk:(v.jk?String(v.jk).split(/,\s*/).filter(Boolean):[]), goal:v.goal, agency:v.agency,
-      company:v.company, dir:v.dir, lang:v.lang, upAt:v.upAt||"", upBy:v.upBy||"" };
+      company:v.company, dir:v.dir, lang:v.lang, upAt:v.upAt||"", upBy:v.upBy||"",
+      district:v.district||"", rooms:v.rooms||"", area:v.area||"", floor:v.floor||"", source:v.source||"" };
   }
   function normAt(a){
     if(!a) return "";
@@ -1296,7 +1297,8 @@ function initVisits(root){
       name:name, phone:phone, email:fv(root,"vemail"), jk:jk, goal:fv(root,"vgoal"),
       agency:fv(root,"vagency"), company:fv(root,"vcompany"), dir:fv(root,"vdir"), lang:gv(root,"vlang")||"RU" };
     if(editing){ v.upAt=new Date().toISOString(); v.upBy=authName(); }
-    var row=Object.assign({}, v, { jk: jk.join(", ") });
+    var prev=ROWS.find(function(x){return x.id===v.id;})||{};   /* анкету с киоска при правке не теряем */
+    var row=Object.assign({ district:prev.district||"", rooms:prev.rooms||"", area:prev.area||"", floor:prev.floor||"", source:prev.source||"" }, v, { jk: jk.join(", ") });
     var idx=ROWS.findIndex(function(x){return x.id===v.id;});
     if(idx>=0) ROWS[idx]=row; else { ROWS.unshift(row); flt.show(at.slice(0,10)); }
     sortRows();
@@ -1321,7 +1323,7 @@ function initVisits(root){
       var d=String(v.at||"").slice(0,10);
       if(!inRange(d, F.from, F.to)) return false;
       if(!q) return true;
-      return normTxt([v.name,v.phone,v.role,v.jk,v.goal,v.company,v.agency,v.dir,v.email].join(" ")).indexOf(q)>=0;
+      return normTxt([v.name,v.phone,v.role,v.jk,v.goal,v.company,v.agency,v.dir,v.email,v.district,v.rooms,v.area,v.floor,v.source].join(" ")).indexOf(q)>=0;
     });
   }
   function draw(){
@@ -1339,11 +1341,12 @@ function initVisits(root){
     if(loading && !loaded){ w.innerHTML='<div class="empty" style="border:0"><b>Загружаю визиты…</b></div>'; return; }
     if(!rr.length){ w.innerHTML='<div class="empty" style="border:0"><b>Визитов нет</b>'+(loaded?(ROWS.length?'Измените период или запрос.':'Добавьте визит слева или зарегистрируйте на киоске /visit/.'):'Пока ни одного визита.')+'</div>'; return; }
     w.innerHTML='<table><thead><tr><th>Дата/время</th><th>Роль</th><th>Режим</th><th>ФИО</th><th>Телефон</th><th>Email</th>'+
-      '<th>Интересующие ЖК</th><th>Цель визита</th><th>Агентство</th><th>Компания</th><th>Направление</th><th>Язык</th><th></th></tr></thead><tbody>'+
+      '<th>Интересующие ЖК</th><th>Цель визита</th><th>Район</th><th>Тип квартиры</th><th>Площадь</th><th>Этаж</th><th>Откуда узнали</th><th>Агентство</th><th>Компания</th><th>Направление</th><th>Язык</th><th></th></tr></thead><tbody>'+
       rr.map(function(v){
         return '<tr'+(v.id===editing?' class="editing"':'')+'><td style="white-space:nowrap">'+esc(v.at)+vUpd(v)+'</td><td>'+esc(v.role)+'</td><td>'+esc(v.mode||"—")+'</td>'+
         '<td>'+esc(v.name||"—")+'</td><td style="white-space:nowrap"><a href="tel:'+esc(String(v.phone||"").replace(/[^0-9+]/g,""))+'">'+esc(v.phone||"—")+'</a></td>'+
         '<td class="wrap">'+esc(v.email||"—")+'</td><td class="wrap">'+esc(v.jk||"—")+'</td><td class="wrap">'+esc(v.goal||"—")+'</td>'+
+        '<td class="wrap">'+esc(v.district||"—")+'</td><td class="wrap">'+esc(v.rooms||"—")+'</td><td class="wrap">'+esc(v.area||"—")+'</td><td class="wrap">'+esc(v.floor||"—")+'</td><td class="wrap">'+esc(v.source||"—")+'</td>'+
         '<td>'+esc(v.agency||"—")+'</td><td>'+esc(v.company||"—")+'</td><td class="wrap">'+esc(v.dir||"—")+'</td><td>'+esc(v.lang||"—")+'</td>'+
         '<td class="rowact"><button class="lnk ed" data-edit="'+esc(v.id)+'">изменить</button>'+(canDelete()?'<button class="lnk" data-del="'+esc(v.id)+'">удалить</button>':'')+'</td></tr>';
       }).join("")+'</tbody></table>';
@@ -1369,8 +1372,9 @@ function initVisits(root){
     var g=flt.get();
     var meta=[["Период",periodLabel(g.from,g.to)],["Всего визитов",rr.length]]; if(g.q.trim()) meta.push(["Поиск",g.q.trim()]);
     var cols=[{h:"Дата/время",w:16},{h:"Роль",w:12},{h:"Режим",w:16},{h:"ФИО",w:20},{h:"Телефон",w:15},{h:"Email",w:20},
-      {h:"Интересующие ЖК",w:30},{h:"Цель визита",w:22},{h:"Агентство",w:15},{h:"Компания",w:15},{h:"Направление",w:16},{h:"Язык",w:7}];
-    var rows=rr.map(function(v){ return [v.at,v.role,v.mode,v.name,v.phone,v.email,v.jk,v.goal,v.agency,v.company,v.dir,v.lang]; });
+      {h:"Интересующие ЖК",w:30},{h:"Цель визита",w:22},{h:"Район",w:16},{h:"Тип квартиры",w:20},{h:"Площадь",w:14},{h:"Этаж",w:14},{h:"Откуда узнали",w:26},
+      {h:"Агентство",w:15},{h:"Компания",w:15},{h:"Направление",w:16},{h:"Язык",w:7}];
+    var rows=rr.map(function(v){ return [v.at,v.role,v.mode,v.name,v.phone,v.email,v.jk,v.goal,v.district||"",v.rooms||"",v.area||"",v.floor||"",v.source||"",v.agency,v.company,v.dir,v.lang]; });
     return { title:"Визиты в офис", file:"Sebiston — Визиты — "+periodLabel(g.from,g.to), meta:meta, signLeft:"Составил",
       kpis:[["всего визитов",rr.length]],
       tables:[{sheet:"Визиты",heading:"Визиты в офис",cols:cols,rows:rows}] };
