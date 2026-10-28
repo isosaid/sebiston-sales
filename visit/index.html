@@ -600,9 +600,26 @@ function compatFlat(x){ return { id:x.id, time:new Date(x.at).toISOString(), rol
   agency:x.agency, company:x.company, dir:x.dir, lang:x.lang }; }
 async function sendSheets(v){
   if(!v.v) return true;
+  let txt="";
   try{ const r=await fetch(SHEET_API,{method:"POST",headers:{"Content-Type":"text/plain;charset=utf-8"},body:JSON.stringify(Object.assign({a:"visit",v:v.v}, compatFlat(v.v)))});
-       const j=await r.json(); return !!(j&&j.ok); }catch(e){ return false; }
+       txt=await r.text(); logSend("HTTP "+r.status+": "+txt.slice(0,300)); const j=JSON.parse(txt); return !!(j&&j.ok); }
+  catch(e){ logSend("ОШИБКА: "+e+(txt?" | ответ: "+txt.slice(0,300):"")); return false; }
 }
+function logSend(m){ try{ const L=JSON.parse(localStorage.getItem("sebiston_send_log")||"[]"); L.unshift(new Date().toLocaleString("ru")+" — "+m); localStorage.setItem("sebiston_send_log",JSON.stringify(L.slice(0,15))); }catch(e){} }
+/* диагностика: откройте киоск с ?diag — видно очередь, ответы сервера и кнопку теста */
+if(/[?&]diag\b/.test(location.search)) addEventListener("load",()=>{
+  const d=document.createElement("div");
+  d.style.cssText="position:fixed;inset:12px;z-index:99;background:#fff;border:2px solid #27aa45;border-radius:14px;padding:18px;font:14px/1.45 Inter,sans-serif;overflow:auto;color:#222";
+  const show=async()=>{ let get=""; try{ get=await (await fetch(SHEET_API)).text(); }catch(e){ get="ОШИБКА: "+e; }
+    d.innerHTML="<b style='font-size:18px'>Диагностика киоска</b><br><br><b>Сервер (GET):</b> "+esc(get.slice(0,300))+
+      "<br><b>В очереди (не отправлено):</b> "+getQ().length+"<br><b>Онлайн:</b> "+navigator.onLine+
+      "<br><br><button id='dgT' style='padding:12px 18px;border-radius:10px;background:#27aa45;color:#fff;font-weight:700'>Отправить тестовый визит</button> "+
+      "<button id='dgF' style='padding:12px 18px;border-radius:10px;background:#eee;font-weight:700'>Досылать очередь</button>"+
+      "<br><br><b>Последние ответы сервера:</b><br>"+JSON.parse(localStorage.getItem("sebiston_send_log")||"[]").map(x=>"• "+esc(x)).join("<br>");
+    d.querySelector("#dgT").onclick=async()=>{ const id="diag-"+Date.now(); const v={id,sent:{},v:{id,at:new Date(Date.now()-new Date().getTimezoneOffset()*6e4).toISOString().slice(0,19),role:"Покупатель",mode:"",name:"ТЕСТ диагностика — удалить",phone:"+992000000000",email:"",jk:["ADDRESS Residence"],goal:"Проверка",agency:"",company:"",dir:"",lang:"RU",district:"Центр",rooms:"2-комнатная",area:"50–70 м²",floor:"до 9 этажа",source:"Instagram | Социальные сети"}};
+      await sendSheets(v); show(); };
+    d.querySelector("#dgF").onclick=async()=>{ await flush(); show(); }; };
+  document.body.appendChild(d); show(); });
 async function sendBitrix(v){
   try{ const r=await fetch(CONFIG.BITRIX_WEBHOOK,{method:"POST",headers:{"Content-Type":"application/json"},body:JSON.stringify({fields:v.fields,params:{REGISTER_SONET_EVENT:"N"}})});
        const j=await r.json(); return !!(r.ok&&j&&j.result); }catch(e){ return false; }
