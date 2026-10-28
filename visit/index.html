@@ -594,9 +594,13 @@ function buildVisit(){
       ...(data.email?{EMAIL:[{VALUE:data.email.trim(),VALUE_TYPE:"WORK"}]}:{}),
       SOURCE_DESCRIPTION:"Киоск регистрации визита", COMMENTS:lines.join("\n") } };
 }
+/* те же поля «плоско» — чтобы визит записался, даже если на сервере стоит короткий скрипт киоска (вкладка «Визиты киоска») */
+function compatFlat(x){ return { id:x.id, time:new Date(x.at).toISOString(), role:x.role, mode:x.mode, name:x.name, phone:x.phone, email:x.email,
+  jk:(x.jk||[]).join(", "), goal:x.goal, district:x.district||"", rooms:x.rooms||"", area:x.area||"", floor:x.floor||"", source:x.source||"",
+  agency:x.agency, company:x.company, dir:x.dir, lang:x.lang }; }
 async function sendSheets(v){
   if(!v.v) return true;
-  try{ const r=await fetch(SHEET_API,{method:"POST",headers:{"Content-Type":"text/plain;charset=utf-8"},body:JSON.stringify({a:"visit",v:v.v})});
+  try{ const r=await fetch(SHEET_API,{method:"POST",headers:{"Content-Type":"text/plain;charset=utf-8"},body:JSON.stringify(Object.assign({a:"visit",v:v.v}, compatFlat(v.v)))});
        const j=await r.json(); return !!(j&&j.ok); }catch(e){ return false; }
 }
 async function sendBitrix(v){
