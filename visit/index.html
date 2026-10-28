@@ -690,7 +690,7 @@ document.addEventListener("click",e=>{const b=e.target.closest("[data-lang]"); i
 
 /* ---------- левая колонка: ролик с YouTube, подогнанный под размер колонки ----------
    Без интернета или если YouTube недоступен — играет локальный строительный ролик (side.mp4). */
-const YT_ID="cdsMdnKXPkk", YT_RATIO=16/9;      // если ролик вертикальный — поставьте 9/16
+const YT_ID="cdsMdnKXPkk", YT_RATIO=1;         // ролик квадратный (1:1); для 16:9 поставьте 16/9, для вертикального 9/16
 function sizeYT(){ const f=$("#yt"), sd=$("#side"); if(!f||!sd) return;
   const w=sd.offsetWidth, h=sd.offsetHeight+140;                   // запас по высоте прячет полосу заголовка YouTube
   const W=Math.max(w,h*YT_RATIO), H=Math.max(h,w/YT_RATIO);
