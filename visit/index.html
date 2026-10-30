@@ -112,6 +112,9 @@ button{cursor:pointer;border:0;background:none;text-align:inherit}
 .btn.dis{background:var(--disabled);cursor:not-allowed;filter:none}
 .note{position:absolute;font:500 14px/14px Inter,sans-serif;letter-spacing:.29px;color:var(--ph);white-space:nowrap}
 .note.c{left:482px;width:835px;text-align:center}
+.otpmsg{position:absolute;left:501px;width:797px;text-align:center;font:500 14px/18px Inter,sans-serif;color:var(--g-dark)}
+.otpmsg.bad{color:#d33a3a}
+html.m #body .otpmsg{position:static;width:auto;margin:-8px 0 16px}
 
 .person{position:absolute;left:501px;width:797px;height:161px;background:var(--g-soft);border-radius:10px}
 .person .nm{position:absolute;left:39px;top:50px;font:600 25px/25px Inter,sans-serif;letter-spacing:-.51px;color:var(--ink);white-space:nowrap}
@@ -292,6 +295,12 @@ ru:{
  agency:"Агентство недвижимости", agency_ph:"Название агентства",
  company:"Компания / Организация", company_ph:"Название компании",
  dir:"Направление партнёрства", dir_ph:"Выберите направление", dir_title:"Выберите направление",
+ send_code:"Отправить код", guest:"Номер подтверждён", not_found:"В базе не найден — менеджер уточнит данные",
+ otp_sending:"Отправляем код менеджеру…", otp_sent:"Код отправлен менеджеру в Telegram — он введёт его сам или назовёт вам.",
+ otp_err_code:"Неверный код — проверьте и попробуйте ещё раз", otp_err_wait:"Код уже отправлен — подождите 30 секунд",
+ otp_err_exp:"Код устарел — отправьте новый", otp_err_tries:"Слишком много попыток — отправьте новый код",
+ otp_err_net:"Нет связи с сервером — попробуйте ещё раз", otp_err_bot:"Подтверждение пока не настроено — обратитесь на ресепшен",
+ otp_ok_by:"Подтвердил менеджер",
  consent:"Нажимая на кнопку «Зарегистрироваться», вы даёте согласие на обработку персональных данных",
  visible:"Данные видны только сотрудникам, которые работают с вашим обращением.",
  submit:"Зарегистрировать визит", found:"Клиент найден в базе", confirmed:"Номер подтвержден", yourphone:"Ваш номер телефона",
@@ -326,6 +335,12 @@ tg:{
  agency:"Агентии амволи ғайриманқул", agency_ph:"Номи агентӣ",
  company:"Ширкат / Созмон", company_ph:"Номи ширкат",
  dir:"Самти ҳамкорӣ", dir_ph:"Самтро интихоб кунед", dir_title:"Самтро интихоб кунед",
+ send_code:"Фиристодани рамз", guest:"Рақам тасдиқ шуд", not_found:"Дар база ёфт нашуд — менеҷер маълумотро равшан мекунад",
+ otp_sending:"Рамз ба менеҷер фиристода мешавад…", otp_sent:"Рамз ба менеҷер дар Telegram фиристода шуд — ӯ худаш ворид мекунад ё ба шумо мегӯяд.",
+ otp_err_code:"Рамз нодуруст аст — санҷед ва боз кӯшиш кунед", otp_err_wait:"Рамз аллакай фиристода шуд — 30 сония интизор шавед",
+ otp_err_exp:"Мӯҳлати рамз гузашт — рамзи навро фиристед", otp_err_tries:"Кӯшишҳо зиёд шуданд — рамзи навро фиристед",
+ otp_err_net:"Пайваст бо сервер нест — боз кӯшиш кунед", otp_err_bot:"Тасдиқ ҳоло танзим нашудааст — ба мизи пешвоз муроҷиат кунед",
+ otp_ok_by:"Менеҷер тасдиқ кард",
  consent:"Бо пахши тугмаи «Сабти ташриф» шумо ба коркарди маълумоти шахсӣ розигӣ медиҳед",
  visible:"Маълумот танҳо барои кормандоне намоён аст, ки бо муроҷиати шумо кор мекунанд.",
  submit:"Сабти ташриф", found:"Муштарӣ дар база ёфт шуд", confirmed:"Рақам тасдиқ шуд", yourphone:"Рақами телефони шумо",
@@ -353,19 +368,17 @@ const JK=["Бульвар Скандинавия","ADDRESS Residence","Varzob Ri
 
 /* ---------- state ---------- */
 const $=s=>document.querySelector(s), $$=s=>[...document.querySelectorAll(s)];
+let profile=null, otpReq=null, otpMsg="", otpBad=false, otpTimer=null;
+function stopOtpPoll(){ if(otpTimer){ clearInterval(otpTimer); otpTimer=null; } }
 let lang="ru", role="buyer", mode="reg", verified=false, codeSent=false, tried=false;
 let data={};
-const reset=()=>{data={name:"",phone:"",email:"",agency:"",company:"",code:"",jk:[],goal:null,dir:null,quiz:{district:[],rooms:[],area:[],floor:[],source:[]}};verified=false;codeSent=false;tried=false;};
+const reset=()=>{data={name:"",phone:"",email:"",agency:"",company:"",code:"",jk:[],goal:null,dir:null,quiz:{district:[],rooms:[],area:[],floor:[],source:[]}};verified=false;codeSent=false;tried=false;profile=null;otpReq=null;otpMsg="";otpBad=false;stopOtpPoll();};
 reset();
 const t=k=>T[lang][k];
 const esc=s=>String(s).replace(/[&<>"]/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;'}[c]));
 
-/* DEMO ONLY: replace with real lookup / SMS API calls. */
-const DEMO_PROFILE={
-  client:{name:"Азиз Шаропов", line:()=>t("found")+" × ADDRESS Residence"},
-  broker:{name:"Азиз Шаропов", line:()=>"Агентство недвижимости «City House»"},
-  partner:{name:"Азиз Шаропов", line:()=>"Телеканал «ТОЧИКИСТОН»"}
-};
+/* данные подтверждённого гостя приходят с сервера (поиск по номеру в таблице) */
+const prof=()=>({ name:(profile&&profile.name)||t("guest"), line:(profile&&profile.line)||(profile&&profile.by?t("otp_ok_by")+": "+profile.by:t("not_found")) });
 
 const CHEV='<svg class="chev" viewBox="0 0 22 12" fill="none"><path d="M1.2 1.2L11 10.6l9.8-9.4" stroke="#111" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"/></svg>';
 const TICK_W='<svg width="16" height="16" viewBox="0 0 16 16" fill="none" stroke="#fff" stroke-width="2.6" stroke-linecap="round" stroke-linejoin="round"><path d="M3 8.6l3.2 3.2L13 4.4"/></svg>';
@@ -438,7 +451,7 @@ function field(f,locked){
     case "agency": h+=inp("i_agency",data.agency,t("agency_ph")); break;
     case "company": h+=inp("i_company",data.company,t("company_ph")); break;
     case "phone": case "vphone": h+=phoneBox(f,off); break;
-    case "code": h+=`<div class="box code" style="${st}"><input id="i_code" type="password" inputmode="numeric" autocomplete="one-time-code" placeholder="**********" value="${esc(data.code)}"></div>`; break;
+    case "code": h+=`<div class="box code" style="${st}"><input id="i_code" type="text" inputmode="numeric" autocomplete="one-time-code" maxlength="4" placeholder="••••" value="${esc(data.code)}"></div>`; break;
     case "jk": case "goal": case "dir": {
       const val = f.k==="jk" ? data.jk.join(", ") : f.k==="goal" ? (data.goal!=null?T[lang].goals[role][data.goal]:"") : (data.dir!=null?T[lang].dirs[data.dir]:"");
       const ph = t(f.k+"_ph");
@@ -465,9 +478,10 @@ function render(){
     L.items=[];
   }
   for(const f of L.items){
-    if(f.k==="confirm"){ h+=`<button class="btn" id="verify" style="left:501px;top:${f.y}px;width:797px">${t("code_btn")}</button>`; continue; }
-    if(f.k==="person"){ const p=DEMO_PROFILE[role];
-      h+=`<div class="person" style="top:${f.y}px"><div class="nm">${esc(p.name)}</div><div class="ln">${esc(p.line())}</div>
+    if(f.k==="confirm"){ h+=`<button class="btn" id="verify" style="left:501px;top:${f.y}px;width:797px">${codeSent?t("code_btn"):t("send_code")}</button>`+
+      `<div class="otpmsg${otpBad?" bad":""}" id="otpMsg" style="top:${f.y+76}px">${esc(otpMsg)}</div>`; continue; }
+    if(f.k==="person"){ const p=prof();
+      h+=`<div class="person" style="top:${f.y}px"><div class="nm">${esc(p.name)}</div><div class="ln">${esc(p.line)}</div>
           <div class="ck">${TICK_W}</div><div class="ok">${t("confirmed")}</div></div>`; continue; }
     if(f.k==="pline"){ h+=`<div class="pline" style="top:${f.y}px"><span>${t("yourphone")}</span><span>${esc(maskPhone(data.phone))}</span></div>`; continue; }
     h+=field(f,L.locked);
@@ -487,6 +501,20 @@ function quizHTML(){
       q.o.map((o,i)=>`<button type="button" class="chip${data.quiz[q.k].includes(i)?" on":""}" data-q="${q.k}" data-i="${i}" aria-pressed="${data.quiz[q.k].includes(i)}">${BOX}${esc(o)}</button>`).join("")+
     `</div></div>`).join("")+`</div>`;
 }
+
+/* ---------- подтверждение через Telegram-бота (сервер Apps Script) ---------- */
+async function callApi(a,extra){
+  try{ const r=await fetch(SHEET_API,{method:"POST",headers:{"Content-Type":"text/plain;charset=utf-8"},body:JSON.stringify(Object.assign({a},extra||{}))});
+       return await r.json(); }catch(e){ return {ok:false,err:"net"}; }
+}
+function onVerified(j){ stopOtpPoll(); profile={name:j.name||"", line:j.line||"", by:j.by||""}; verified=true; otpMsg=""; render(); }
+function startOtpPoll(){ stopOtpPoll(); const req=otpReq;
+  otpTimer=setInterval(async()=>{ if(verified||otpReq!==req){ stopOtpPoll(); return; }
+    const j=await callApi("otp_status",{req});
+    if(otpReq!==req||verified) return;
+    if(j.ok&&j.verified) onVerified(j);
+    else if(j.err==="expired"){ stopOtpPoll(); codeSent=false; otpReq=null; otpMsg=t("otp_err_exp"); otpBad=true; render(); }
+  },3000); }
 
 /* ---------- phone helpers ---------- */
 function digits(s){let d=String(s).replace(/\D/g,""); if(d.length>9&&d.startsWith("992")) d=d.slice(3); return d.slice(0,9);}
@@ -516,16 +544,31 @@ function bind(){
   const ph=$("#i_phone");
   if(ph){
     const toEnd=()=>{ const n=ph.value.length; try{ ph.setSelectionRange(n,n); }catch(_){} };
-    ph.addEventListener("input",e=>{ data.phone=digits(ph.value); if(ph.value!==data.phone) ph.value=data.phone;
+    ph.addEventListener("input",e=>{ if(codeSent&&!verified&&digits(ph.value)!==data.phone){ codeSent=false; otpReq=null; stopOtpPoll(); otpMsg=""; const vb2=$("#verify"); if(vb2) vb2.textContent=t("send_code"); const m=$("#otpMsg"); if(m) m.textContent=""; } data.phone=digits(ph.value); if(ph.value!==data.phone) ph.value=data.phone;
       const m=$("#phMask"); m.innerHTML=maskHTML(data.phone); m.classList.toggle("has",!!data.phone); toEnd(); clr(e); });
     ["focus","click","keyup"].forEach(ev=>ph.addEventListener(ev,()=>setTimeout(toEnd,0)));
   }
   const vb=$("#verify");
-  if(vb) vb.addEventListener("click",()=>{
+  if(vb) vb.addEventListener("click",async()=>{
     if(!phoneOk()){ph.closest(".box").classList.add("bad");ph.focus();return;}
-    if(!codeSent){ codeSent=true; $("#i_code").focus(); }            // DEMO: SMS with a code would be requested here
+    if(vb.disabled) return;
+    const setMsg=(m,bad)=>{ otpMsg=m; otpBad=!!bad; const el=$("#otpMsg"); if(el){ el.textContent=m; el.classList.toggle("bad",!!bad); } };
+    if(!codeSent || !otpReq){                                   // 1) номер → код уходит менеджеру в Telegram
+      vb.disabled=true; setMsg(t("otp_sending"));
+      const j=await callApi("otp_request",{phone:"+992"+digits(data.phone), role:ROLE_RU[role]});
+      vb.disabled=false;
+      if(!j.ok){ setMsg(t({wait:"otp_err_wait",bot:"otp_err_bot",nomgr:"otp_err_bot",auth:"otp_err_bot"}[j.err]||"otp_err_net"),true); return; }
+      otpReq=j.req; codeSent=true; vb.textContent=t("code_btn"); setMsg(t("otp_sent")); const c=$("#i_code"); if(c) c.focus();
+      startOtpPoll(); return;
+    }
     if(data.code.trim().length<4){ const c=$("#i_code"); c.closest(".box").classList.add("bad"); c.focus(); return; }
-    verified=true; render();                                         // DEMO: any 4+ character code is accepted
+    vb.disabled=true;                                           // 2) проверка кода
+    const j=await callApi("otp_verify",{req:otpReq, code:data.code.trim()});
+    vb.disabled=false;
+    if(j.ok && j.verified){ onVerified(j); return; }
+    if(j.err==="expired"||j.err==="tries"){ codeSent=false; otpReq=null; stopOtpPoll(); vb.textContent=t("send_code"); }
+    setMsg(t({code:"otp_err_code",expired:"otp_err_exp",tries:"otp_err_tries"}[j.err]||"otp_err_net"),true);
+    const c=$("#i_code"); if(c){ c.closest(".box").classList.add("bad"); c.select(); }
   });
   $$("[data-pick]").forEach(b=>b.addEventListener("click",()=>openDD(b.dataset.pick,b)));
   $$(".chip").forEach(c=>c.addEventListener("click",()=>{ const k=c.dataset.q, i=+c.dataset.i, a=data.quiz[k];
@@ -573,7 +616,7 @@ function buildVisit(){
   const ru=T.ru, isReg = role!=="buyer" && (role==="client" || mode==="reg");
   const goal = data.goal!=null ? ru.goals[role][data.goal] : "";
   const dir  = data.dir!=null ? ru.dirs[data.dir] : "";
-  const who  = verified ? DEMO_PROFILE[role].name : data.name.trim();
+  const who  = verified ? ((profile&&profile.name)||data.name.trim()) : data.name.trim();
   const now  = new Date();
   const modeTxt = role==="buyer" ? "" : (isReg ? "уже зарегистрирован" : "первый визит");
   const phone = fullPhone(data.phone);
@@ -586,7 +629,8 @@ function buildVisit(){
   const id=now.getTime()+"-"+Math.random().toString(36).slice(2,7);
   return { id, sent:{},
     /* плоская запись для листа «Визиты» */
-    v:{ id, at:new Date(now.getTime()-now.getTimezoneOffset()*60000).toISOString().slice(0,19), role:ROLE_RU[role],   // местное время киоска mode:modeTxt, name:who, phone:"+992"+digits(data.phone), email:data.email.trim(),
+    v:{ id, at:new Date(now.getTime()-now.getTimezoneOffset()*60000).toISOString().slice(0,19), role:ROLE_RU[role], mode:modeTxt, name:who,   /* at — местное время киоска */
+        phone:"+992"+digits(data.phone), email:data.email.trim(),
         jk:data.jk.slice(), goal, agency:data.agency.trim(), company:data.company.trim(), dir, lang:lang.toUpperCase(),
         ...(role==="buyer" ? {district:Q.district, rooms:Q.rooms, area:Q.area, floor:Q.floor, source:Q.source} : {}) },
     fields:{ TITLE:"Визит в офис: "+ROLE_RU[role]+" — "+(who||phone), NAME:who,
@@ -600,6 +644,10 @@ function compatFlat(x){ return { id:x.id, time:new Date(x.at).toISOString(), rol
   agency:x.agency, company:x.company, dir:x.dir, lang:x.lang }; }
 async function sendSheets(v){
   if(!v.v) return true;
+  /* починка визитов из очереди, собранных версией с ошибкой (без имени/телефона): берём их из запасной копии */
+  if(v.fields && !v.v.phone && !v.v.name){
+    const F=v.fields; v.v.name=F.NAME||""; v.v.phone=(F.PHONE&&F.PHONE[0]&&F.PHONE[0].VALUE)||""; v.v.email=(F.EMAIL&&F.EMAIL[0]&&F.EMAIL[0].VALUE)||"";
+    const m=/Режим: ([^\n]+)/.exec(F.COMMENTS||""); v.v.mode=m?m[1]:""; }
   let txt="";
   try{ const r=await fetch(SHEET_API,{method:"POST",headers:{"Content-Type":"text/plain;charset=utf-8"},body:JSON.stringify(Object.assign({a:"visit",v:v.v}, compatFlat(v.v)))});
        txt=await r.text(); logSend("HTTP "+r.status+": "+txt.slice(0,300)); const j=JSON.parse(txt); return !!(j&&j.ok); }
