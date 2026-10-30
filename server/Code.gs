@@ -553,7 +553,10 @@ function otpRequest_(q){
   if(ph.length < 9) return { ok:false, err:'phone' };
   if(!tgToken_()) return { ok:false, err:'bot' };
   var c = CacheService.getScriptCache();
-  if(c.get('otp_lim_' + ph)) return { ok:false, err:'wait' };                       // не чаще раза в 30 секунд на номер
+  if(c.get('otp_lim_' + ph)){                                                       // не чаще раза в 30 секунд на номер:
+    var last = c.get('otp_last_' + ph);                                             // повторное нажатие — тот же код
+    return last && c.get('otp_' + last) ? { ok:true, req: last, again:true, ttl: OTP_TTL } : { ok:false, err:'wait' };
+  }
   var n = +(c.get('otp_cnt') || 0); if(n > 40) return { ok:false, err:'busy' };     // защита от спама
   c.put('otp_cnt', String(n + 1), 600); c.put('otp_lim_' + ph, '1', 30);
   tgPoll_();                                                                        // подхватить новых менеджеров
@@ -562,6 +565,7 @@ function otpRequest_(q){
   var code = String(Math.floor(1000 + Math.random() * 9000));
   var req = Utilities.getUuid().replace(/-/g, '').slice(0, 16);
   c.put('otp_' + req, JSON.stringify({ phone: ph, code: code, ok:false }), OTP_TTL);
+  c.put('otp_last_' + ph, req, OTP_TTL);
   var cl = findClient_(ph);
   var role = String(q.role || ''), pretty = '+' + ph.replace(/^(992)(\d{2})(\d{3})(\d{2})(\d{2})$/, '$1 $2 $3 $4 $5');
   var text = '🔔 Заявка с киоска Sebiston\n' +

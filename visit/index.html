@@ -403,7 +403,13 @@ function layout(){
   }
   // broker / partner
   const last = role==="broker" ? "jk" : "goal";
-  if(mode==="reg"){
+  if(mode==="reg" && role==="broker"){          // брокер «уже зарегистрирован» — как клиент: ЖК + цель визита
+    L.card=[368,506];
+    if(!verified){ L.items=[F("vphone",395,427,501,392),F("code",395,427,906,392),{k:"confirm",y:518},F("jk",628,660),F("goal",751,783)];
+      L.locked=true; L.submitOff=true; }
+    else L.items=[{k:"person",y:388},{k:"pline",y:569},F("jk",615,647),F("goal",743,775)];
+    L.note={y:888,k:"consent",c:1};
+  } else if(mode==="reg"){
     L.card=[368,476];
     if(!verified){ L.items=[F("vphone",424,456,501,392),F("code",424,456,906,392),{k:"confirm",y:561},F(last,684,717)];
       L.locked=true; L.submitOff=true; }
@@ -504,8 +510,9 @@ function quizHTML(){
 
 /* ---------- подтверждение через Telegram-бота (сервер Apps Script) ---------- */
 async function callApi(a,extra){
-  try{ const r=await fetch(SHEET_API,{method:"POST",headers:{"Content-Type":"text/plain;charset=utf-8"},body:JSON.stringify(Object.assign({a},extra||{}))});
-       return await r.json(); }catch(e){ return {ok:false,err:"net"}; }
+  const ac=new AbortController(), to=setTimeout(()=>ac.abort(),30000);    // Apps Script отвечает 3–15 секунд
+  try{ const r=await fetch(SHEET_API,{method:"POST",signal:ac.signal,headers:{"Content-Type":"text/plain;charset=utf-8"},body:JSON.stringify(Object.assign({a},extra||{}))});
+       return await r.json(); }catch(e){ return {ok:false,err:"net"}; } finally{ clearTimeout(to); }
 }
 function onVerified(j){ stopOtpPoll(); profile={name:j.name||"", line:j.line||"", by:j.by||""}; verified=true; otpMsg=""; render(); }
 function startOtpPoll(){ stopOtpPoll(); const req=otpReq;
@@ -528,7 +535,7 @@ const emailOk=()=>/^[^@\s]+@[^@\s]+\.[^@\s]+$/.test(data.email);
 function valid(){
   if(role==="buyer") return data.name.trim().length>1&&phoneOk()&&emailOk()&&data.jk.length&&data.goal!=null;
   if(role==="client") return verified&&data.jk.length>0&&data.goal!=null;
-  if(mode==="reg") return verified&&(role==="broker"?data.jk.length>0:data.goal!=null);
+  if(mode==="reg") return verified&&(role==="broker"?(data.jk.length>0&&data.goal!=null):data.goal!=null);
   if(role==="broker") return data.name.trim().length>1&&phoneOk()&&data.agency.trim()&&data.jk.length&&data.goal!=null;
   return data.name.trim().length>1&&phoneOk()&&data.company.trim()&&emailOk()&&data.dir!=null&&data.goal!=null;
 }
