@@ -38,6 +38,8 @@ button{cursor:pointer;border:0;background:none;text-align:inherit}
 .abs{position:absolute}
 .t{position:absolute;white-space:nowrap}
 
+#swipeHint{position:fixed;top:14px;left:50%;white-space:nowrap;box-shadow:0 6px 20px rgba(0,0,0,.25);transform:translate(-50%,8px);z-index:50;background:rgba(37,37,37,.86);color:#fff;font:600 15px/1 Inter,sans-serif;padding:11px 18px;border-radius:22px;opacity:0;pointer-events:none;transition:opacity .3s,transform .3s}
+#swipeHint.on{opacity:1;transform:translate(-50%,0)}
 #frame{position:fixed;inset:0;overflow:hidden;overflow:clip;transition:transform .28s cubic-bezier(.2,.8,.2,1)}
 /* the stage always fills the whole window: extra width/height (--dx/--dy) is absorbed by the photo and the background */
 #stage{position:absolute;left:0;top:0;width:1377px;height:1025px;--dx:0px;--dy:0px;background:var(--bg);overflow:hidden;overflow:clip;transform-origin:0 0}
@@ -239,6 +241,7 @@ html.m #dd .opt svg{top:17px}
 </style>
 </head>
 <body>
+<div id="swipeHint" aria-hidden="true">↕ Проведите пальцем — другие поля</div>
 <div id="frame"><div id="stage">
 
   <!-- 1. Splash -->
@@ -815,20 +818,42 @@ addEventListener("scroll",()=>{ if(!document.documentElement.classList.contains(
 let baseW=0, baseH=0;
 const typing=()=>{ const a=document.activeElement; return !!(a&&a.matches&&a.matches("input,textarea")); };
 function kbGap(){ const vv=window.visualViewport; if(!vv) return 0; return Math.max(0, (baseH||innerHeight) - (vv.height+vv.offsetTop)); }
+let kbShift=0;
+function kbOpen(){ return typing() && !isM() && kbGap()>=60; }
+function applyShift(v,anim){ const fr=$("#frame"), max=kbOpen()?kbGap()+16:0;     // можно прокрутить так, чтобы низ формы встал над клавиатурой
+  kbShift=Math.max(0,Math.min(max,v)); fr.style.transition=anim===false?"none":"";
+  fr.style.transform = kbShift ? `translateY(${-Math.round(kbShift)}px)` : ""; }
 function keepFocusedVisible(){
-  const a=document.activeElement, fr=$("#frame");
-  if(!typing()){ fr.style.transform=""; return; }
+  const a=document.activeElement;
+  if(!typing()){ applyShift(0); return; }
   if(isM()){                                                            // телефон: обычная прокрутка страницы
     const vv=window.visualViewport, r=a.getBoundingClientRect(), vh=vv?vv.height:innerHeight;
     if(r.top<80 || r.bottom>vh-90) scrollBy({top:r.top-Math.max(80,(vh-r.height)/2),behavior:"smooth"}); return; }
-  const gap=kbGap(); if(gap<60){ fr.style.transform=""; return; }       // клавиатуры нет или она не перекрывает
-  const box=a.closest(".box")||a, cur=parseFloat((/translateY\((-?[\d.]+)px\)/.exec(fr.style.transform)||[0,0])[1])||0;
-  const r=box.getBoundingClientRect(), bottom=r.bottom-cur, visible=(baseH||innerHeight)-gap-24;
-  const shift=Math.max(0, bottom-visible);
-  fr.style.transform = shift ? `translateY(${-Math.round(shift)}px)` : "";
+  if(!kbOpen()){ applyShift(0); return; }
+  const box=a.closest(".box")||a, r=box.getBoundingClientRect(), visible=(baseH||innerHeight)-kbGap()-24;
+  const top=r.top+kbShift, bottom=r.bottom+kbShift;                     // положение поля без сдвига
+  if(bottom-kbShift>visible || top-kbShift<16) applyShift(Math.max(0,bottom-visible));
+  showSwipeHint();
 }
+/* свайп вверх/вниз по экрану при открытой клавиатуре — к другим полям, клавиатура не закрывается */
+let sw=null;
+document.addEventListener("touchstart",e=>{ if(!kbOpen()||e.touches.length!==1) return;
+  sw={y:e.touches[0].clientY, last:e.touches[0].clientY, moved:false, flow:e.target.closest&&e.target.closest("#flow")}; },{passive:true});
+document.addEventListener("touchmove",e=>{ if(!sw) return; const y=e.touches[0].clientY, d=sw.last-y; sw.last=y;   // d>0 — палец вверх
+  if(Math.abs(y-sw.y)>6) sw.moved=true; if(!sw.moved) return; e.preventDefault();
+  const max=kbGap()+16, f=sw.flow;
+  if(f){ // внутри карточки покупателя: сначала сдвигаем экран, потом листаем анкету (и обратно)
+    if(d>0){ const room=max-kbShift; const a=Math.min(d,Math.max(0,room)); applyShift(kbShift+a,false); f.scrollTop+=d-a; }
+    else { const back=Math.min(-d,f.scrollTop); f.scrollTop-=back; applyShift(kbShift+d+back,false); }
+  } else applyShift(kbShift+d,false); },{passive:false});
+document.addEventListener("touchend",()=>{ if(sw&&sw.moved) $("#frame").style.transition=""; sw=null; },{passive:true});
+document.addEventListener("wheel",e=>{ if(!kbOpen()) return; e.preventDefault(); applyShift(kbShift+e.deltaY,false); },{passive:false});
+let hintShown=false;
+function showSwipeHint(){ if(hintShown||!kbOpen()) return; hintShown=true; const h=$("#swipeHint"); if(!h) return;
+  const sd=$("#side").getBoundingClientRect(), vis=(baseH||innerHeight)-kbGap();       // подсказка — на фото слева, над клавиатурой
+  h.style.left=(sd.left+sd.width/2)+"px"; h.style.top=Math.max(14,vis/2-20)+"px"; h.classList.add("on"); setTimeout(()=>h.classList.remove("on"),2600); }
 document.addEventListener("focusin",()=>{ setTimeout(keepFocusedVisible,60); setTimeout(keepFocusedVisible,350); });
-document.addEventListener("focusout",()=>setTimeout(()=>{ if(!typing()){ $("#frame").style.transform=""; if(Math.abs(innerWidth-baseW)>2||Math.abs(innerHeight-baseH)>2) fit(); } },120));
+document.addEventListener("focusout",()=>setTimeout(()=>{ if(!typing()){ applyShift(0); hintShown=false; if(Math.abs(innerWidth-baseW)>2||Math.abs(innerHeight-baseH)>2) fit(); } },120));
 if(window.visualViewport) visualViewport.addEventListener("scroll",keepFocusedVisible);
 
 function fit(){ if(typing() && Math.abs(innerWidth-baseW)<2){ keepFocusedVisible(); return; }   // клавиатура открыта — только сдвиг
