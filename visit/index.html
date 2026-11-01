@@ -38,6 +38,21 @@ button{cursor:pointer;border:0;background:none;text-align:inherit}
 .abs{position:absolute}
 .t{position:absolute;white-space:nowrap}
 
+/* ---------- своя компактная клавиатура киоска ---------- */
+#vk{position:fixed;z-index:60;bottom:0;background:#d6d9df;border-radius:18px 18px 0 0;box-shadow:0 -8px 30px rgba(0,0,0,.16);
+  padding:10px 10px calc(10px + env(safe-area-inset-bottom));display:flex;flex-direction:column;gap:7px;transform:translateY(105%);transition:transform .25s cubic-bezier(.2,.8,.2,1);
+  font:500 19px/1 Inter,system-ui,sans-serif;user-select:none;-webkit-user-select:none;touch-action:manipulation}
+#vk.on{transform:none}
+#vk .r{display:flex;gap:6px;flex:1}
+#vk button{flex:1;min-width:0;display:flex;align-items:center;justify-content:center;text-align:center;line-height:1;height:auto;margin:0;border:0;border-radius:9px;background:#fff;color:#1d1d1f;box-shadow:0 1px 0 rgba(0,0,0,.28);font:inherit;padding:0;transition:background .08s}
+#vk button:active,#vk button.p{background:#bfc3cc}
+#vk .f{background:#aeb3be;font-size:16px;font-weight:600}
+#vk .w2{flex:1.5}#vk .w3{flex:2.2}#vk .sp{flex:5}
+#vk .go{background:var(--g);color:#fff;font-weight:700;font-size:16px}
+#vk .go:active{background:#1f8f39}
+#vk .hide{background:#aeb3be;font-size:15px}
+#vk.num button{font-size:24px}
+#vk.num .r{width:min(100%,480px);margin:0 auto}
 #swipeHint{position:fixed;top:14px;left:50%;white-space:nowrap;box-shadow:0 6px 20px rgba(0,0,0,.25);transform:translate(-50%,8px);z-index:50;background:rgba(37,37,37,.86);color:#fff;font:600 15px/1 Inter,sans-serif;padding:11px 18px;border-radius:22px;opacity:0;pointer-events:none;transition:opacity .3s,transform .3s}
 #swipeHint.on{opacity:1;transform:translate(-50%,0)}
 #frame{position:fixed;inset:0;overflow:hidden;overflow:clip;transition:transform .28s cubic-bezier(.2,.8,.2,1)}
@@ -241,6 +256,7 @@ html.m #dd .opt svg{top:17px}
 </style>
 </head>
 <body>
+<div id="vk" aria-hidden="true"></div>
 <div id="swipeHint" aria-hidden="true">↕ Проведите пальцем — другие поля</div>
 <div id="frame"><div id="stage">
 
@@ -304,6 +320,7 @@ ru:{
  agency:"Агентство недвижимости", agency_ph:"Название агентства",
  company:"Компания / Организация", company_ph:"Название компании",
  dir:"Направление партнёрства", dir_ph:"Выберите направление", dir_title:"Выберите направление",
+ vk_next:"Далее", vk_hide:"Скрыть",
  send_code:"Отправить код", guest:"Номер подтверждён", not_found:"В базе не найден — менеджер уточнит данные",
  otp_sending:"Отправляем код менеджеру…", otp_sent:"Код отправлен менеджеру в Telegram — он введёт его сам или назовёт вам.",
  otp_err_code:"Неверный код — проверьте и попробуйте ещё раз", otp_err_wait:"Код уже отправлен — подождите 30 секунд",
@@ -344,6 +361,7 @@ tg:{
  agency:"Агентии амволи ғайриманқул", agency_ph:"Номи агентӣ",
  company:"Ширкат / Созмон", company_ph:"Номи ширкат",
  dir:"Самти ҳамкорӣ", dir_ph:"Самтро интихоб кунед", dir_title:"Самтро интихоб кунед",
+ vk_next:"Минбаъд", vk_hide:"Пинҳон",
  send_code:"Фиристодани рамз", guest:"Рақам тасдиқ шуд", not_found:"Дар база ёфт нашуд — менеҷер маълумотро равшан мекунад",
  otp_sending:"Рамз ба менеҷер фиристода мешавад…", otp_sent:"Рамз ба менеҷер дар Telegram фиристода шуд — ӯ худаш ворид мекунад ё ба шумо мегӯяд.",
  otp_err_code:"Рамз нодуруст аст — санҷед ва боз кӯшиш кунед", otp_err_wait:"Рамз аллакай фиристода шуд — 30 сония интизор шавед",
@@ -462,7 +480,7 @@ function field(f,locked){
   const inp=(id,val,ph,type="text",extra="")=>`<div class="box${off}${bad(f.k)} ${extra}" style="${st}"><input id="${id}" type="${type}" autocomplete="off" placeholder="${esc(ph)}" value="${esc(val)}"></div>`;
   switch(f.k){
     case "name": h+=inp("i_name",data.name,t("name_ph")); break;
-    case "email": h+=inp("i_email",data.email,role==="partner"?t("email_ph2"):t("email_ph"),"email"); break;
+    case "email": h+=inp("i_email",data.email,role==="partner"?t("email_ph2"):t("email_ph"),"text").replace("<input ","<input inputmode=\"email\" autocapitalize=\"off\" spellcheck=\"false\" "); break;
     case "agency": h+=inp("i_agency",data.agency,t("agency_ph")); break;
     case "company": h+=inp("i_company",data.company,t("company_ph")); break;
     case "phone": case "vphone": h+=phoneBox(f,off); break;
@@ -817,7 +835,65 @@ addEventListener("scroll",()=>{ if(!document.documentElement.classList.contains(
    сдвигаем экран вверх ровно настолько, чтобы активное поле было над клавиатурой. */
 let baseW=0, baseH=0;
 const typing=()=>{ const a=document.activeElement; return !!(a&&a.matches&&a.matches("input,textarea")); };
-function kbGap(){ const vv=window.visualViewport; if(!vv) return 0; return Math.max(0, (baseH||innerHeight) - (vv.height+vv.offsetTop)); }
+/* Своя клавиатура для киоска (планшет горизонтально): меньше системной, стоит внизу под формой,
+   системная клавиатура при этом не открывается (inputmode="none"). На телефоне — обычная клавиатура. */
+const VK={
+  ru:["й ц у к е н г ш щ з х ъ","ф ы в а п р о л д ж э","⇧ я ч с м и т ь б ю ⌫","?123 🌐 ␣ . Далее"],
+  tj:["ҳ ҷ қ ғ ӯ ӣ ё ш щ з х ъ","й ц у к е н г ф ы в а п","р о л д ж э я ч с м и т","⇧ ь б ю - ⌫","?123 🌐 ␣ . Далее"],
+  en:["q w e r t y u i o p","a s d f g h j k l","⇧ z x c v b n m ⌫","?123 🌐 ␣ @ . Далее"],
+  sym:["1 2 3 4 5 6 7 8 9 0","@ . _ - + ' « » №","( ) / : ; , ! ? ⌫",".com .tj @gmail.com @mail.ru","АБВ ␣ Далее"],
+  num:["1 2 3","4 5 6","7 8 9","⌫ 0 Далее"]
+};
+let vkLayer="ru", vkShift=true, vkPrevAlpha="ru";
+const useVK=()=>!isM() && matchMedia("(pointer:coarse)").matches;   // только на сенсорном киоске
+function vkFor(el){ if(!el) return "ru"; if(el.id==="i_phone"||el.id==="i_code") return "num"; if(el.id==="i_email") return "en"; return lang==="tg"?"tj":"ru"; }
+function vkRender(){ const k=$("#vk"); const rows=VK[vkLayer]; k.classList.toggle("num",vkLayer==="num");
+  k.innerHTML=rows.map(r=>'<div class="r">'+r.split(" ").map(c=>{
+    let cls="", label=c;
+    if(c==="⇧"){ cls="f w2"; } else if(c==="⌫"){ cls="f w2"; } else if(c==="?123"||c==="АБВ"||c==="🌐"){ cls="f w2"; label=c==="🌐"?(vkLayer==="en"?(lang==="tg"?"ТОҶ":"РУС"):"EN"):c; }
+    else if(c==="␣"){ cls="sp"; label="пробел"; } else if(c==="Далее"){ cls="go w3"; label=t("vk_next"); } else if(c==="Скрыть"){ cls="hide"; label=t("vk_hide"); }
+    else if(c.length>2){ cls="f w2"; label=c; }
+    else if(vkShift&&vkLayer!=="sym"&&vkLayer!=="num") label=c.toUpperCase();
+    return `<button type="button" class="${cls}" data-k="${esc(c)}">${esc(label)}</button>`; }).join("")+'</div>').join(""); }
+function vkPlace(){ const k=$("#vk"), fr=$("#frame"); if(!k) return;
+  const card=$("#tabs")||$("#body"), r=card?card.getBoundingClientRect():null, sd=$("#side").getBoundingClientRect();
+  const left=Math.max(0,sd.right+8), w=innerWidth-left-8;                      // под колонкой формы, фото слева остаётся видно
+  k.style.left=left+"px"; k.style.width=w+"px"; k.style.height=Math.round(Math.min(250,Math.max(190,innerHeight*0.25)))+"px"; }
+function vkShow(el){ if(!useVK()) return; const k=$("#vk"); vkLayer=vkFor(el); vkPrevAlpha=vkLayer==="num"?vkPrevAlpha:vkLayer;
+  vkShift = el.id!=="i_email" && !el.value; vkPlace(); vkRender(); k.classList.add("on"); k.setAttribute("aria-hidden","false");
+  setTimeout(keepFocusedVisible,30); }
+function vkHide(){ const k=$("#vk"); if(!k) return; k.classList.remove("on"); k.setAttribute("aria-hidden","true"); }
+const vkOn=()=>{ const k=$("#vk"); return !!(k&&k.classList.contains("on")); };
+function vkInsert(el,txt){ const a=el.selectionStart??el.value.length, b=el.selectionEnd??a;
+  if(el.maxLength>0 && el.value.length-(b-a)+txt.length>el.maxLength && el.id!=="i_phone") return;
+  el.setRangeText(txt,a,b,"end"); el.dispatchEvent(new Event("input",{bubbles:true})); }
+function vkBack(el){ let a=el.selectionStart??el.value.length, b=el.selectionEnd??a; if(a===b){ if(!a) return; a--; }
+  el.setRangeText("",a,b,"end"); el.dispatchEvent(new Event("input",{bubbles:true})); }
+function vkNext(el){ const all=$$("#body input").filter(x=>x.offsetParent&&!x.closest(".off")&&!x.disabled);
+  const i=all.indexOf(el); const n=all[i+1]; if(n){ n.focus(); vkShow(n); } else { el.blur(); vkHide(); } }
+document.addEventListener("pointerdown",e=>{ const b=e.target.closest&&e.target.closest("#vk button"); if(!b) return;
+  e.preventDefault(); const el=document.activeElement; if(!el||!el.matches("#body input")) return;
+  const c=b.dataset.k; b.classList.add("p"); setTimeout(()=>b.classList.remove("p"),120);
+  if(c==="⌫") vkBack(el);
+  else if(c==="⇧"){ vkShift=!vkShift; vkRender(); }
+  else if(c==="?123"){ vkLayer="sym"; vkRender(); }
+  else if(c==="АБВ"){ vkLayer=vkPrevAlpha; vkRender(); }
+  else if(c==="🌐"){ vkLayer = vkLayer==="en" ? (lang==="tg"?"tj":"ru") : "en"; vkPrevAlpha=vkLayer; vkRender(); }
+  else if(c==="␣") vkInsert(el," ");
+  else if(c==="Далее") vkNext(el);
+  else if(c==="Скрыть"){ el.blur(); vkHide(); }
+  else { vkInsert(el, vkShift&&vkLayer!=="sym"&&vkLayer!=="num" ? c.toUpperCase() : c); if(vkShift&&vkLayer!=="sym"){ vkShift=false; vkRender(); } }
+  setTimeout(keepFocusedVisible,10);
+});
+// inputmode="none" ставим ещё до фокуса, чтобы системная клавиатура даже не мигала
+["touchstart","pointerdown","mousedown"].forEach(ev=>document.addEventListener(ev,e=>{ const el=e.target&&e.target.closest&&e.target.closest("#body input"); if(el&&useVK()) el.setAttribute("inputmode","none"); },{capture:true,passive:true}));
+document.addEventListener("focusin",e=>{ const el=e.target; if(el&&el.matches&&el.matches("#body input")){
+  if(useVK()){ el.setAttribute("inputmode","none"); vkShow(el); } } });
+document.addEventListener("focusout",()=>setTimeout(()=>{ if(!typing()) vkHide(); },80));
+addEventListener("resize",()=>{ if(vkOn()) vkPlace(); });
+
+function kbGap(){ if(vkOn()) return $("#vk").offsetHeight;                      // своя клавиатура
+  const vv=window.visualViewport; if(!vv) return 0; return Math.max(0, (baseH||innerHeight) - (vv.height+vv.offsetTop)); }
 let kbShift=0;
 function kbOpen(){ return typing() && !isM() && kbGap()>=60; }
 function applyShift(v,anim){ const fr=$("#frame"), max=kbOpen()?kbGap()+16:0;     // можно прокрутить так, чтобы низ формы встал над клавиатурой
