@@ -79,7 +79,7 @@ button{cursor:pointer;border:0;background:none;text-align:inherit}
 .seg{position:absolute;top:295px;height:58px;border-radius:12px;font:500 17px/56px Inter,sans-serif;transition:transform .12s;letter-spacing:-.22px;text-align:center;
   border:1px solid var(--ph);background:var(--bg);color:var(--ink)}
 .seg.on{background:#fff;border-color:#fff;color:var(--seg-ink);font-weight:600;letter-spacing:-.36px}
-.seg.reg{left:482px;width:413px}.seg.new{left:905px;width:412px}
+.seg.new{left:482px;width:413px}.seg.reg{left:905px;width:412px}
 
 /* ---------- card & fields ---------- */
 .card{left:482px;width:835px;background:#fff;border-radius:10px}
@@ -259,7 +259,7 @@ html.m #dd .opt svg{top:17px}
       <button class="tab" style="left:909px" data-role="broker" data-i="r_broker"></button>
       <button class="tab" style="left:1117px" data-role="partner" data-i="r_partner"></button>
     </div>
-    <div id="segs"><button class="seg reg" data-mode="reg" data-i="s_reg"></button><button class="seg new" data-mode="new" data-i="s_new"></button></div>
+    <div id="segs"><button class="seg new" data-mode="new" data-i="s_new"></button><button class="seg reg" data-mode="reg" data-i="s_reg"></button></div>
     <div id="body"></div>
     <button class="btn" id="submit" style="left:482px;top:920px;width:835px"></button>
       <div id="ddCatch"></div>
@@ -371,7 +371,7 @@ const JK=["Бульвар Скандинавия","ADDRESS Residence","Varzob Ri
 const $=s=>document.querySelector(s), $$=s=>[...document.querySelectorAll(s)];
 let profile=null, otpReq=null, otpMsg="", otpBad=false, otpTimer=null;
 function stopOtpPoll(){ if(otpTimer){ clearInterval(otpTimer); otpTimer=null; } }
-let lang="ru", role="buyer", mode="reg", verified=false, codeSent=false, tried=false;
+let lang="ru", role="buyer", mode="new", verified=false, codeSent=false, tried=false;
 let data={};
 const reset=()=>{data={name:"",phone:"",email:"",agency:"",company:"",code:"",jk:[],goal:null,dir:null,quiz:{district:[],rooms:[],area:[],floor:[],source:[]}};verified=false;codeSent=false;tried=false;profile=null;otpReq=null;otpMsg="";otpBad=false;stopOtpPoll();};
 reset();
@@ -709,7 +709,7 @@ let doneT=null;
 
 /* ---------- navigation ---------- */
 function show(id){ $$(".screen").forEach(s=>s.classList.toggle("on",s.id===id)); if(document.documentElement.classList.contains("m")) scrollTo(0,0); }
-$("#tabs").addEventListener("click",e=>{const b=e.target.closest("button");if(!b||b.dataset.role===role)return; role=b.dataset.role;mode="reg";reset();render();});
+$("#tabs").addEventListener("click",e=>{const b=e.target.closest("button");if(!b||b.dataset.role===role)return; role=b.dataset.role;mode="new";reset();render();});
 $("#segs").addEventListener("click",e=>{const b=e.target.closest("button");if(!b||b.dataset.mode===mode)return; mode=b.dataset.mode;reset();render();});
 $("#submit").addEventListener("click",()=>{
   if($("#submit").classList.contains("dis")) return;
@@ -718,7 +718,7 @@ $("#submit").addEventListener("click",()=>{
   showDone(); });
 $("#finish").addEventListener("click",goHome);
 const isM=()=>document.documentElement.classList.contains("m");   // phones open straight on the form
-function goHome(){ clearTimeout(doneT); reset(); role="buyer"; mode="reg"; render(); show("form"); armAttract(); }
+function goHome(){ clearTimeout(doneT); reset(); role="buyer"; mode="new"; render(); show("form"); armAttract(); }
 
 let idle=null;
 function bump(){ clearTimeout(idle); idle=setTimeout(()=>{ if($("#form").classList.contains("on")) goHome(); },90000); }
