@@ -180,26 +180,54 @@ html.m #body .otpmsg{position:static;width:auto;margin:-8px 0 16px}
 .flowfade.gone{opacity:0}
 .flowfade span{font:500 13px/16px Inter,sans-serif;color:var(--ph);display:flex;align-items:center;gap:6px;animation:nudge 1.8s ease-in-out infinite}
 @keyframes nudge{50%{transform:translateY(3px)}}
-.quiz{border-top:1px solid var(--line);margin-top:8px;padding-top:26px}
-.quiz .qhd{font:700 20px/24px Inter,sans-serif;letter-spacing:-.5px;color:var(--ink)}
-.quiz .qsub{font:500 14px/18px Inter,sans-serif;color:var(--ph);margin:4px 0 22px}
-.qblock{margin-bottom:22px}
-.qblock .lab{margin-bottom:12px}
-.chips{display:flex;flex-wrap:wrap;gap:8px}
-.chip{position:relative;display:inline-flex;align-items:center;gap:8px;min-height:48px;padding:0 18px;border:1px solid #d4d5dd;border-radius:10px;background:#fff;
-  font:500 16px/20px Inter,sans-serif;letter-spacing:-.3px;color:var(--ink);transition:background-color .15s,border-color .15s,color .15s,transform .1s}
+/* ---------- анкета покупателя ---------- */
+.quiz{margin-top:10px;padding-top:24px;border-top:1px solid var(--line)}
+.qtop{display:flex;align-items:center;gap:16px;padding:18px 20px;border-radius:14px;margin-bottom:26px;
+  background:linear-gradient(120deg,#eaf6ee 0%,#f6fbf7 60%,#fff 100%);border:1px solid #d3ecd9}
+.qico{width:52px;height:52px;border-radius:14px;background:var(--g);display:grid;place-items:center;flex:none;box-shadow:0 6px 16px rgba(39,170,69,.28)}
+.qtxt{flex:1;min-width:0}
+.quiz .qhd{font:700 21px/26px Inter,sans-serif;letter-spacing:-.5px;color:var(--ink)}
+.quiz .qsub{font:500 14px/19px Inter,sans-serif;color:#6b6f80;margin-top:3px}
+.qprog{flex:none;text-align:right;font:600 13px/16px Inter,sans-serif;color:#4c8f5f}
+.qprog b{display:block;font:700 22px/26px Inter,sans-serif;color:var(--g);letter-spacing:-.5px}
+.qbar{height:4px;width:96px;border-radius:4px;background:#d3ecd9;margin-top:6px;overflow:hidden}
+.qbar i{display:block;height:100%;width:0;background:var(--g);border-radius:4px;transition:width .35s cubic-bezier(.2,.8,.2,1)}
+.qblock{margin-bottom:26px}
+.qblock:last-child{margin-bottom:8px}
+.qq{display:flex;align-items:center;gap:12px;margin-bottom:12px}
+.qn{width:28px;height:28px;border-radius:50%;flex:none;display:grid;place-items:center;font:700 13px/1 Inter,sans-serif;color:#7a7e8e;background:#eef0f4;transition:.2s}
+.qblock.done .qn{background:var(--g);color:#fff}
+.qq .lab{margin:0;font:600 16px/21px Inter,sans-serif;letter-spacing:-.3px;color:var(--ink)}
+.chips{display:grid;grid-template-columns:repeat(var(--n),minmax(0,1fr));gap:10px}
+.chip{position:relative;display:flex;align-items:center;justify-content:center;text-align:center;min-height:58px;padding:8px 28px;border:1.5px solid #dfe1e8;border-radius:12px;background:#fff;
+  font:500 15px/19px Inter,sans-serif;letter-spacing:-.2px;color:var(--ink);box-shadow:0 1px 2px rgba(20,30,50,.04);
+  transition:background-color .18s,border-color .18s,color .18s,box-shadow .18s,transform .1s}
 .chip:active{transform:scale(.97)}
-.chip i{width:18px;height:18px;border-radius:5px;border:1.5px solid #b9bbc8;display:grid;place-items:center;flex:none;transition:.15s}
-.chip.on{background:var(--g-soft);border-color:var(--g);color:#14632f}
-.chip.on i{background:var(--g);border-color:var(--g)}
-.chip i svg{opacity:0}.chip.on i svg{opacity:1}
+.chip i{position:absolute;top:8px;right:8px;width:20px;height:20px;border-radius:50%;border:1.5px solid #cfd2db;display:grid;place-items:center;transition:.18s;background:#fff}
+.chip.on{background:linear-gradient(180deg,#f1faf3,#e6f5ea);border-color:var(--g);color:#14632f;font-weight:600;box-shadow:0 4px 14px rgba(39,170,69,.16)}
+.chip.on i{background:var(--g);border-color:var(--g);transform:scale(1.05)}
+.chip i svg{opacity:0;transition:opacity .15s}.chip.on i svg{opacity:1}
+.chip em{font-style:normal;display:block;font:500 12px/15px Inter,sans-serif;color:#8b8fa0;margin-top:2px}
+.chip.on em{color:#3d8a55}
 html.m .flow{position:static;width:auto;height:auto;overflow:visible;padding:0}
 html.m #body .flow .box{display:block;width:100%!important}
 html.m .frow{grid-template-columns:1fr}
 html.m .flow .fcol{margin-bottom:0}
 html.m .flowfade{display:none}
-html.m .quiz{margin:6px 0 10px;padding-top:22px}
-html.m .chip{min-height:46px;padding:0 14px;font-size:15px}
+html.m .quiz{margin:6px 0 10px;padding-top:20px}
+html.m .qtop{padding:14px;gap:12px;flex-wrap:wrap}
+html.m .qico{width:42px;height:42px;border-radius:12px}
+html.m .quiz .qhd{font-size:18px;line-height:22px}
+html.m .qprog{width:100%;display:flex;align-items:center;gap:10px;text-align:left}
+html.m .qprog b{display:inline;font-size:16px}
+html.m .qbar{flex:1;margin:0}
+html.m .chips{grid-template-columns:repeat(2,minmax(0,1fr));gap:8px}
+html.m .chips[style*="--n:3"]{grid-template-columns:repeat(3,minmax(0,1fr))}
+html.m .chip{min-height:56px;padding:10px 16px;font-size:14px;line-height:17px}
+html.m .chips{padding-top:6px}
+html.m .chip i{top:-7px;right:-5px;width:20px;height:20px;opacity:0;transform:scale(.6);box-shadow:0 0 0 2px #fff}
+html.m .chip.on i{opacity:1;transform:none}
+html.m .chip i svg{width:10px;height:10px}
 
 /* =================== phones (portrait & landscape): flowing layout =================== */
 html.m body{overflow:auto;background:var(--bg)}
@@ -336,7 +364,7 @@ ru:{
  ok_broker:"Рады видеть вас и вашего<br>клиента в нашем офисе.",
  ok_partner:"Подойдите к стойке ресепшена — менеджер проведет<br>вас к ответственному представителю.",
 
- quiz_title:"Пара вопросов о будущей квартире", quiz_hint:"Можно отметить несколько вариантов — так менеджер подберёт точнее", more_below:"Ещё вопросы ниже",
+ quiz_prog:"Отвечено", quiz_title:"Пара вопросов о будущей квартире", quiz_hint:"Можно отметить несколько вариантов — так менеджер подберёт точнее", more_below:"Ещё вопросы ниже",
  quiz:[
   {k:"district",q:"В каком районе планируете купить квартиру?",o:["Центр","Спальный район","Не принципиально"]},
   {k:"rooms",q:"Тип квартиры",o:["1-комнатная","2-комнатная","3-комнатная","4 и более комнат"]},
@@ -377,7 +405,7 @@ tg:{
  ok_broker:"Шодем, ки шуморо ва мизоҷатонро дар офиси мо мебинем.",
  ok_partner:"Ба мизи пешвоз равед — менеҷер шуморо назди намояндаи масъул мебарад.",
 
- quiz_title:"Чанд савол дар бораи хонаи оянда", quiz_hint:"Якчанд вариантро қайд кардан мумкин аст — менеҷер дақиқтар интихоб мекунад", more_below:"Саволҳои дигар дар поён",
+ quiz_prog:"Ҷавоб дода шуд", quiz_title:"Чанд савол дар бораи хонаи оянда", quiz_hint:"Якчанд вариантро қайд кардан мумкин аст — менеҷер дақиқтар интихоб мекунад", more_below:"Саволҳои дигар дар поён",
  quiz:[
   {k:"district",q:"Дар кадом ноҳия хона харидан мехоҳед?",o:["Марказ","Ноҳияи истиқоматӣ","Фарқ надорад"]},
   {k:"rooms",q:"Навъи хона",o:["1-ҳуҷрагӣ","2-ҳуҷрагӣ","3-ҳуҷрагӣ","4 ва зиёда ҳуҷра"]},
@@ -528,9 +556,15 @@ function render(){
 }
 
 const BOX='<i><svg width="12" height="12" viewBox="0 0 12 12" fill="none"><path d="M2.2 6.3l2.4 2.4 5.2-5.4" stroke="#fff" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/></svg></i>';
-function quizHTML(){
-  return `<div class="quiz"><div class="qhd">${t("quiz_title")}</div><div class="qsub">${t("quiz_hint")}</div>`+
-    T[lang].quiz.map(q=>`<div class="qblock"><div class="lab">${esc(q.q)}</div><div class="chips">`+
+const QICO='<svg width="28" height="28" viewBox="0 0 24 24" fill="none" stroke="#fff" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M3 10.5 12 3l9 7.5"/><path d="M5 9.5V20h14V9.5"/><path d="M10 20v-5.5h4V20"/></svg>';
+function quizDone(){ return T.ru.quiz.filter(q=>(data.quiz[q.k]||[]).length).length; }
+function quizProg(){ const n=quizDone(), all=T.ru.quiz.length;
+  const b=$("#qprogN"); if(b) b.textContent=n+" / "+all; const i=$("#qbarI"); if(i) i.style.width=(n/all*100)+"%";
+  $$(".qblock").forEach(el=>el.classList.toggle("done",(data.quiz[el.dataset.k]||[]).length>0)); }
+function quizHTML(){ const n=quizDone(), all=T[lang].quiz.length;
+  return `<div class="quiz"><div class="qtop"><div class="qico">${QICO}</div><div class="qtxt"><div class="qhd">${t("quiz_title")}</div><div class="qsub">${t("quiz_hint")}</div></div>`+
+    `<div class="qprog">${t("quiz_prog")}<b id="qprogN">${n} / ${all}</b><div class="qbar"><i id="qbarI" style="width:${n/all*100}%"></i></div></div></div>`+
+    T[lang].quiz.map((q,qi)=>`<div class="qblock${data.quiz[q.k].length?" done":""}" data-k="${q.k}"><div class="qq"><span class="qn">${qi+1}</span><div class="lab">${esc(q.q)}</div></div><div class="chips" style="--n:${q.o.length}">`+
       q.o.map((o,i)=>`<button type="button" class="chip${data.quiz[q.k].includes(i)?" on":""}" data-q="${q.k}" data-i="${i}" aria-pressed="${data.quiz[q.k].includes(i)}">${BOX}${esc(o)}</button>`).join("")+
     `</div></div>`).join("")+`</div>`;
 }
@@ -607,7 +641,7 @@ function bind(){
   $$("[data-pick]").forEach(b=>b.addEventListener("click",()=>openDD(b.dataset.pick,b)));
   $$(".chip").forEach(c=>c.addEventListener("click",()=>{ const k=c.dataset.q, i=+c.dataset.i, a=data.quiz[k];
     data.quiz[k] = a.includes(i) ? a.filter(x=>x!==i) : [...a,i].sort((x,y)=>x-y);
-    const on=data.quiz[k].includes(i); c.classList.toggle("on",on); c.setAttribute("aria-pressed",on); }));
+    const on=data.quiz[k].includes(i); c.classList.toggle("on",on); c.setAttribute("aria-pressed",on); quizProg(); }));
 }
 
 /* ---------- dropdown lists (справочники) ---------- */
