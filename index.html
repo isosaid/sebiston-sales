@@ -116,6 +116,12 @@ input[aria-invalid="true"]{border-color:var(--red);background:var(--red-soft)}
 #p-visits .vgrid{display:grid;grid-template-columns:repeat(auto-fit,minmax(300px,1fr));gap:0 32px}
 #p-visits .vform .actions{position:static;margin:4px -22px 0;padding:14px 22px;border-top:1px solid var(--line)}
 #p-visits .vadd{margin-left:auto}
+#p-visits .cidcard{display:flex;align-items:center;gap:16px;flex-wrap:wrap;padding:14px 16px;margin:0 0 16px;border-radius:12px;background:var(--card);border:1px solid var(--green);font-size:14px}
+#p-visits .cidcard[hidden]{display:none}
+#p-visits .cid-id{font-size:22px;font-weight:700;color:var(--green);letter-spacing:-.02em}
+#p-visits .cid-main{flex:1;min-width:220px;line-height:1.5}
+#p-visits .cid-main span{display:block;color:var(--ink-3);font-size:13px}
+#p-visits .cid-note{font-size:12px;color:var(--ink-3)}
 #p-visits .stats .stat.on .n{color:var(--green)}
 #p-visits .chip{font-size:16px;padding:13px 22px;min-height:50px;font-weight:600}
 #p-visits .chip[aria-pressed="true"]{font-weight:700}
@@ -1233,7 +1239,8 @@ function initVisits(root){
       '<button class="btn btn-ghost" data-f="vclear" type="button">Очистить</button>'+
       '<button class="btn btn-main" data-f="save" type="button">Сохранить визит</button></div>'+
   '</div>'+
-  filterBarHTML("Имя, телефон, роль, ЖК, цель, район, источник…", '<button type="button" class="btn btn-main btn-sm vadd" data-f="vadd">+ Добавить визит</button>'+expBtns())+
+  filterBarHTML("ID клиента (SB-10001), имя, телефон, роль, ЖК, цель…", '<button type="button" class="btn btn-main btn-sm vadd" data-f="vadd">+ Добавить визит</button>'+expBtns())+
+  '<div class="cidcard" data-f="cidcard" hidden></div>'+
   '<div class="stats" data-f="stats"></div>'+
   '<div class="tbl-wrap" data-f="tblw"></div>'+
   '<datalist id="visGoalsDL"></datalist><datalist id="visDirsDL">'+VIS_DIRS.map(function(d){return '<option value="'+esc(d)+'">';}).join("")+'</datalist>';
@@ -1335,8 +1342,11 @@ function initVisits(root){
     toastUndo("Визит удалён", function(){ ROWS.splice(Math.min(i,ROWS.length),0,v); sortRows(); draw(); api("visit",{v:rowToV(v)}).catch(function(){}); });
   }
 
+  /* «SB-10001», «sb10001» или просто «10001» — поиск по ID клиента, за всё время */
+  function idQuery(q){ var m=String(q||"").trim().match(/^(?:sb\s*-?\s*)?(\d{5})$/i); return m ? "SB-"+m[1] : ""; }
   function pick(){
-    var F=flt.get(), q=normTxt(F.q||"").trim();
+    var F=flt.get(), q=normTxt(F.q||"").trim(), cid=idQuery(F.q);
+    if(cid) return ROWS.filter(function(v){ return String(v.cid||"").toUpperCase()===cid; });
     return ROWS.filter(function(v){
       var d=String(v.at||"").slice(0,10);
       if(!inRange(d, F.from, F.to)) return false;
@@ -1358,6 +1368,16 @@ function initVisits(root){
       '<div class="stat"><div class="n">'+quiz+'</div><div class="t">заполнили анкету</div></div>'+
       '<div class="stat money"><div class="n">'+(nd?(rr.length/nd).toFixed(1).replace(".",",").replace(",0",""):"0")+'</div><div class="t">визитов в день</div></div>';
     flt.meta(rr.length, ROWS.length);
+    var cc=f(root,"cidcard"), cq=idQuery(flt.get().q);
+    if(!cq){ cc.hidden=true; }
+    else if(!rr.length){ cc.hidden=false; cc.innerHTML='<b>'+esc(cq)+'</b> — визитов с таким ID нет.'; }
+    else {
+      var last=rr[0], first=rr[rr.length-1];
+      cc.hidden=false;
+      cc.innerHTML='<div class="cid-id">'+esc(cq)+'</div><div class="cid-main"><b>'+esc(last.name||"—")+'</b> · <a href="tel:'+esc(String(last.phone||"").replace(/[^0-9+]/g,""))+'">'+esc(last.phone||"")+'</a>'+
+        '<span>Менеджер: <b>'+esc(last.cmgr||"не указан")+'</b> · визитов: <b>'+rr.length+'</b> · первый: '+esc(String(first.at||"").slice(0,10))+' · последний: '+esc(String(last.at||"").slice(0,16))+'</span></div>'+
+        '<span class="cid-note">поиск по ID — за всё время</span>';
+    }
     var w=f(root,"tblw");
     if(!w.classList.contains("tbl-wrap")){ var nw=el('<div class="tbl-wrap" data-f="tblw"></div>'); w.parentNode.replaceChild(nw,w); w=nw; }
     if(loading && !loaded){ w.innerHTML='<div class="empty" style="border:0"><b>Загружаю визиты…</b></div>'; return; }
