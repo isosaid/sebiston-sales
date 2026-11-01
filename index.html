@@ -145,13 +145,19 @@ input[aria-invalid="true"]{border-color:var(--red);background:var(--red-soft)}
 #p-visits .cc-num b{display:block;font-size:32px;color:#fff;letter-spacing:-.02em}
 #p-visits .cc-b{background:var(--card);border-radius:14px;margin:0 2px 2px;padding:20px 24px 6px;display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:4px 28px}
 #p-visits .cc-f{margin-bottom:16px;min-width:0}
-#p-visits .cc-f span{display:block;font-size:13.5px;color:var(--ink-3);margin-bottom:4px}
+#p-visits .cc-f>span{display:block;font-size:13.5px;color:var(--ink-3);margin-bottom:4px}
+#p-visits .cc-f .pill{display:inline-block;margin-right:4px}
+#p-visits .cc-badge.or{background:#FEEEDF;color:#B4530A;border-color:#F9D8B8}
+#p-visits .cc-off{background:#FFF6EC;border-color:#FBE6CF}
+#p-visits .cc-off:before{background:#F97316}
+#p-visits .cc-off .cc-av{background:#B4530A}
 #p-visits .cc-f div{font-size:15px;color:var(--ink);line-height:1.45;overflow-wrap:anywhere}
 #p-visits .cc-f div b{font-weight:600}
 #p-visits .cc-f i{color:var(--ink-3);font-style:normal}
 #p-visits .cc-tl-h{font-size:13px;font-weight:700;letter-spacing:.06em;text-transform:uppercase;color:var(--ink-3);margin:20px 4px 10px}
 #p-visits .cc-v .btn{background:var(--card)}
 :root[data-theme="dark"] #p-visits .cc-v{background:#15291D;border-color:#1E3A28}
+:root[data-theme="dark"] #p-visits .cc-off{background:#2A2014;border-color:#3A2C1B}
 @media (prefers-color-scheme:dark){ :root:not([data-theme="light"]) #p-visits .cc-v{background:#15291D;border-color:#1E3A28} }
 @media (max-width:860px){ #p-visits .cc-b{grid-template-columns:repeat(2,minmax(0,1fr))} }
 @media (max-width:560px){ #p-visits .cc-b{grid-template-columns:1fr;padding:16px 16px 4px} #p-visits .cc-h{padding:16px 14px 14px 18px;gap:12px} #p-visits .cc-name{font-size:20px} #p-visits .cc-av{width:46px;height:46px} }
@@ -1453,9 +1459,24 @@ function initVisits(root){
 
   /* номер визита клиента: один клиент = один ID (или один номер телефона) */
   function ckey(v){ return v.cid ? String(v.cid).toUpperCase() : (String(v.phone||"").replace(/\D/g,"").slice(-9) || ("x"+v.id)); }
+  /* приходы в офис, записанные менеджерами во вкладке «Офис», тоже считаются визитами клиента */
+  function officeVisits(){
+    var cidBy={}, dayBy={};
+    ROWS.forEach(function(v){ var p=String(v.phone||"").replace(/\D/g,"").slice(-9); if(p.length<9) return; if(v.cid) cidBy[p]=v.cid; dayBy[p+"|"+String(v.at||"").slice(0,10)]=v; v._offRec=null; });
+    var out=[];
+    (S.leads||[]).forEach(function(x){
+      if(!x || x.kind!=="office") return;
+      var p=String(x.tel||x.wa||"").replace(/\D/g,"").slice(-9); if(p.length<9 || !x.date) return;
+      var same=dayBy[p+"|"+x.date];
+      if(same){ same._offRec=x; return; }                       // в тот же день есть визит с киоска — это один и тот же приход
+      out.push({ id:"off-"+x.id, _off:true, at:x.date+" "+(x.time||"00:00"), role:"Офис", mode:"", name:x.fio||"", phone:x.tel||x.wa||"",
+        cid:cidBy[p]||"", cmgr:x.mgr||"", goal:x.topic||"", jk:(x.objects||[]).join(", "), _offRec:x });
+    });
+    return out;
+  }
   function numberVisits(){
     var G={};
-    ROWS.forEach(function(v){ (G[ckey(v)]=G[ckey(v)]||[]).push(v); });
+    ROWS.concat(officeVisits()).forEach(function(v){ (G[ckey(v)]=G[ckey(v)]||[]).push(v); });
     Object.keys(G).forEach(function(k){ var L=G[k].slice().sort(function(a,b){ return String(a.at||"").localeCompare(String(b.at||"")); });
       L.forEach(function(v,i){ v._n=i+1; v._tot=L.length; v._hist=L; }); });
   }
@@ -1490,11 +1511,11 @@ function initVisits(root){
     if(loading && !loaded){ bd.innerHTML='<div class="empty"><b>Загружаю клиентов…</b></div>'; return; }
     var OM=officeMap(), C={}, order=[];
     rr.forEach(function(v){ var k=ckey(v); if(!C[k]){ C[k]={k:k, H:v._hist||[v], inP:0}; order.push(k); } C[k].inP++; });
-    var list=order.map(function(k){ var c=C[k], H=c.H, last=H[H.length-1]; c.last=last; c.n=H.length;
+    var list=order.map(function(k){ var c=C[k], H=c.H, last=H.filter(function(v){ return !v._off; }).pop()||H[H.length-1]; c.last=last; c.n=H.length; c.lastAt=H[H.length-1].at;
       c.off=OM[String(last.phone||"").replace(/\D/g,"").slice(-9)]||null; c.mgr=last.cmgr||(c.off&&c.off.mgr)||"";
       var g={}, j={}; H.forEach(function(v){ if(v.goal) g[v.goal]=(g[v.goal]||0)+1; String(v.jk||"").split(/,\s*/).filter(Boolean).forEach(function(x){ j[x]=1; }); });
       c.goals=Object.keys(g).sort(function(a,b){return g[b]-g[a];}); c.jk=Object.keys(j); return c; });
-    list.sort(function(a,b){ return String(b.last.at||"").localeCompare(String(a.last.at||"")); });
+    list.sort(function(a,b){ return String(b.lastAt||"").localeCompare(String(a.lastAt||"")); });
     var cols=[], by={};
     function col(key,title,color){ if(!by[key]){ by[key]={key:key,title:title,color:color,items:[]}; cols.push(by[key]); } return by[key]; }
     if(GROUP==="heat") HEAT.forEach(function(h){ col(h[0],h[1],h[3]); });
@@ -1517,7 +1538,7 @@ function initVisits(root){
           '<div class="kc-d">'+esc(desc)+'</div>'+
           '<div class="kc-row"><div class="kc-av">'+(c.mgr?'<span class="av" title="Менеджер: '+esc(c.mgr)+'">'+esc(initials(c.mgr))+'</span><span class="av-n">'+esc(c.mgr)+'</span>':'<span class="av av-none" title="Менеджер не назначен">?</span><span class="av-n muted">без менеджера</span>')+'</div>'+pill+'</div>'+
         '</div>'+
-        '<div class="kc-f"><span title="Визитов всего">'+IC.v+c.n+'</span><span title="Разных вопросов">'+IC.q+c.goals.length+'</span><span title="Интересующих ЖК">'+IC.h+c.jk.length+'</span><span class="kc-date">'+esc(dLong(L.at))+'</span></div></div>'+
+        '<div class="kc-f"><span title="Визитов всего">'+IC.v+c.n+'</span><span title="Разных вопросов">'+IC.q+c.goals.length+'</span><span title="Интересующих ЖК">'+IC.h+c.jk.length+'</span><span class="kc-date">'+esc(dLong(c.lastAt))+'</span></div></div>'+
       '</article>';
     }
     if(!list.length){ bd.innerHTML='<div class="empty"><b>Клиентов нет</b>'+(ROWS.length?'Измените период или запрос.':'Визиты появятся после регистрации на киоске.')+'</div>'; return; }
@@ -1566,7 +1587,8 @@ function initVisits(root){
     if(cq && !rr.length){ cc.hidden=false; cc.innerHTML='<b>'+esc(cq)+'</b> — визитов с таким ID нет.'; }
     else if(!one){ cc.hidden=true; }
     else {
-      var H=rr[0]._hist||rr, last=H[H.length-1], first=H[0], goals={}, jks={};
+      var H=rr[0]._hist||rr, first=H[0], goals={}, jks={};
+      var last=H.filter(function(v){ return !v._off; }).pop()||H[H.length-1], lastAny=H[H.length-1];
       H.forEach(function(v){ if(v.goal) goals[v.goal]=(goals[v.goal]||0)+1; String(v.jk||"").split(/,\s*/).filter(Boolean).forEach(function(j){ jks[j]=(jks[j]||0)+1; }); });
       var cnt=function(o){ return Object.keys(o).sort(function(a,b){return o[b]-o[a];}).map(function(k){ return esc(k)+(o[k]>1?' <b>×'+o[k]+'</b>':''); }).join(", "); };
       var off=officeMap()[String(last.phone||"").replace(/\D/g,"").slice(-9)]||null, hh=heatOf(H.length);
@@ -1590,7 +1612,7 @@ function initVisits(root){
           fld("Роль", esc(last.role||"")+(last.mode?' · '+esc(last.mode):'')) +
           fld("Этап в «Офисе»", off&&off.stage?'<span class="pill p-'+(STAGE_C[off.stage]||"gray")+'">'+esc(off.stage)+'</span>'+(off.topic?' '+esc(off.topic):''):'') +
           fld("Первый визит", esc(dLong(first.at))+' '+esc(String(first.at||"").slice(11,16))) +
-          fld("Последний визит", esc(dLong(last.at))+' '+esc(String(last.at||"").slice(11,16))) +
+          fld("Последний визит", esc(dLong(lastAny.at))+' '+esc(String(lastAny.at||"").slice(11,16))+(lastAny._off?' <i>(«Офис»)</i>':'')) +
           fld("Язык", esc(last.lang||"")) +
           fld("По каким вопросам", cnt(goals)) +
           fld("Интересовали ЖК", cnt(jks)) +
@@ -1598,15 +1620,22 @@ function initVisits(root){
         '</div></section>'+
         '<div class="cc-tl-h">Что было на каждом визите</div>'+
         H.slice().reverse().map(function(v){
+          var o=v._offRec, offF=o?fld("Этап · решение", (o.stage?'<span class="pill p-'+(STAGE_C[o.stage]||"gray")+'">'+esc(o.stage)+'</span> ':'')+esc([o.decision,o.reject].filter(Boolean).join(" · "))):"";
+          var noteF=o&&o.note?fld("Примечание менеджера", esc(o.note)):"";
+          if(v._off) return '<section class="cc cc-v cc-off"><header class="cc-h"><div class="cc-av sm">№'+v._n+'</div><div class="cc-hd">'+
+              '<div class="cc-name sm">'+esc(dLong(v.at))+' <em>'+esc(String(v.at||"").slice(11,16))+'</em><span class="cc-badge lt or">Запись во вкладке «Офис»</span>'+(v._n===1?'<span class="cc-badge lt b2">первый визит</span>':'')+'</div>'+
+              '<div class="cc-sub"><span>Записал(а): '+esc(o.mgr||"—")+'</span>'+(o.src?'<span>'+esc(o.src)+'</span>':'')+'</div></div></header>'+
+            '<div class="cc-b">'+fld("Что обсуждали / тема", v.goal?'<b>'+esc(v.goal)+'</b>':'')+fld("Интересующий объект", esc(v.jk||""))+offF+noteF+'</div></section>';
           return '<section class="cc cc-v"><header class="cc-h"><div class="cc-av sm">№'+v._n+'</div><div class="cc-hd">'+
               '<div class="cc-name sm">'+esc(dLong(v.at))+' <em>'+esc(String(v.at||"").slice(11,16))+'</em><span class="cc-badge lt">'+esc(v.role||"Визит")+'</span>'+(v._n===1?'<span class="cc-badge lt b2">первый визит</span>':'')+'</div>'+
-              '<div class="cc-sub"><span>'+esc(v.mode||(v._n===1?"первый визит":"повторный визит"))+'</span>'+(v.upBy?'<span>правил: '+esc(v.upBy)+'</span>':'')+'</div></div>'+
+              '<div class="cc-sub"><span>Киоск · '+esc(v.mode||(v._n===1?"первый визит":"повторный визит"))+'</span>'+(v.upBy?'<span>правил: '+esc(v.upBy)+'</span>':'')+'</div></div>'+
               '<button type="button" class="btn btn-ghost btn-sm" data-edit="'+esc(v.id)+'">изменить</button></header>'+
             '<div class="cc-b">'+
               fld("Что сделал / цель визита", v.goal?'<b>'+esc(v.goal)+'</b>':'') +
               fld("Интересующие ЖК", esc(v.jk||"")) +
               fld(v.role==="Брокер"?"Агентство":(v.role==="Партнёр"?"Компания · направление":"Анкета: район · тип · площадь · этаж"),
                   v.role==="Брокер"?esc(v.agency||""):(v.role==="Партнёр"?[v.company,v.dir].filter(Boolean).map(esc).join(" · "):quiz(v))) +
+              offF+noteF+
             '</div></section>';
         }).join("")+
         (cq?'<span class="cid-note">поиск по ID — за всё время</span>':'');

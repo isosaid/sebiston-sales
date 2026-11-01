@@ -499,6 +499,17 @@ function visitHistory_(phone){
     var at = r[0] instanceof Date ? Utilities.formatDate(r[0], 'Asia/Dushanbe', 'yyyy-MM-dd HH:mm') : String(r[0] || '').replace('T', ' ').slice(0, 16);
     out.push({ at: at, role: String(r[1] || ''), goal: String(r[7] || ''), jk: String(r[6] || ''), id: String(r[12] || '') });
   });
+  // приходы, записанные менеджерами во вкладке «Офис», — тоже визиты (если в тот же день нет визита с киоска)
+  var days = {}; out.forEach(function(h){ days[h.at.slice(0, 10)] = 1; });
+  var off = SpreadsheetApp.getActive().getSheetByName('Офис');
+  if (off && off.getLastRow() >= 2) {
+    off.getRange(2, off.getLastColumn(), off.getLastRow() - 1, 1).getValues().forEach(function(r){
+      try { var o = JSON.parse(r[0] || '{}'); } catch (e) { return; }
+      if ([o.tel, o.wa].every(function(x){ return digitsOnly_(x).slice(-9) !== ph; }) || !o.date || days[o.date]) return;
+      days[o.date] = 1;
+      out.push({ at: String(o.date) + ' ' + String(o.time || ''), role: 'Офис', goal: String(o.topic || ''), jk: (o.objects || []).join(', '), id: 'off-' + (o.id || '') });
+    });
+  }
   out.sort(function(a, b){ return a.at < b.at ? -1 : a.at > b.at ? 1 : 0; });
   return out;
 }
@@ -509,7 +520,7 @@ function historyText_(hist, curId){
   if (!prev.length) return '📊 <b>Первый визит</b>\n';
   var goals = {}; prev.forEach(function(h){ if (h.goal) goals[h.goal] = (goals[h.goal] || 0) + 1; });
   var g = Object.keys(goals).sort(function(a, b){ return goals[b] - goals[a]; }).map(function(k){ return htmlEsc_(k) + (goals[k] > 1 ? ' ×' + goals[k] : ''); });
-  var last = prev.slice(-4).reverse().map(function(h){ return '   • ' + dmy_(h.at) + ' — ' + htmlEsc_(h.goal || h.role || 'визит') + (h.jk ? ' (' + htmlEsc_(h.jk) + ')' : ''); });
+  var last = prev.slice(-4).reverse().map(function(h){ return '   • ' + dmy_(h.at) + ' — ' + htmlEsc_(h.goal || h.role || 'визит') + (h.jk ? ' (' + htmlEsc_(h.jk) + ')' : '') + (h.role === 'Офис' ? ' · запись в «Офисе»' : ''); });
   return '📊 <b>Визит №' + (prev.length + 1) + '</b> · был(а) уже ' + prev.length + ' раз(а)\n' +
          (g.length ? '❓ Вопросы раньше: ' + g.join(', ') + '\n' : '') +
          '🗓 Последние визиты:\n' + last.join('\n') + (prev.length > 4 ? '\n   … ещё ' + (prev.length - 4) : '') + '\n';
