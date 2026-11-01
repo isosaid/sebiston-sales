@@ -513,6 +513,26 @@ function visitHistory_(phone){
   out.sort(function(a, b){ return a.at < b.at ? -1 : a.at > b.at ? 1 : 0; });
   return out;
 }
+/* покупки клиента из листа «Продажи»: по телефону покупателя (или номеру, вписанному в ФИО) */
+function findDeals_(phone){
+  var ph = digitsOnly_(phone).slice(-9); if (ph.length < 9) return [];
+  var sh = SpreadsheetApp.getActive().getSheetByName('Продажи'); if (!sh || sh.getLastRow() < 2) return [];
+  var out = [];
+  sh.getRange(2, sh.getLastColumn(), sh.getLastRow() - 1, 1).getValues().forEach(function(r){
+    try { var o = JSON.parse(r[0] || '{}'); } catch (e) { return; }
+    var t = digitsOnly_(o.tel).slice(-9), inName = digitsOnly_((String(o.buyer || '').match(/\d[\d\s()+-]{7,}\d/) || [''])[0]).slice(-9);
+    if (t === ph || inName === ph) out.push(o);
+  });
+  return out;
+}
+function dealsText_(phone){
+  var L = findDeals_(phone); if (!L.length) return '';
+  return L.map(function(o){
+    var where = [o.object, o.ptype || 'Квартира', o.block ? 'блок ' + o.block : '', o.apt ? 'кв. ' + o.apt : '', o.floor ? o.floor + ' этаж' : ''].filter(Boolean).join(', ');
+    var sum = Math.round(+o.total || 0).toString().replace(/\B(?=(\d{3})+(?!\d))/g, ' ');
+    return (o.status === 'Бронь' ? '📝 Бронь: ' : '💰 Купил(а): ') + htmlEsc_(where) + ' — <b>' + sum + ' $</b>' + (o.date ? ' (' + dmy_(o.date) + ')' : '');
+  }).join('\n') + '\n';
+}
 function dmy_(at){ var m = String(at || '').match(/^(\d{4})-(\d{2})-(\d{2})/); return m ? m[3] + '.' + m[2] + '.' + m[1].slice(2) : String(at || ''); }
 /* сводка для Telegram: «Визит №3 · ранее: 20.10 — …» */
 function historyText_(hist, curId){
@@ -620,6 +640,7 @@ function notifyManager_(mgr, v, cid, isNewClient, origin, hist, office){
     (v.goal ? '🎯 ' + htmlEsc_(v.goal) + '\n' : '') +
     (jk ? '🏠 ' + htmlEsc_(jk) + '\n' : '') +
     '\n' + historyText_(hist || [], String(v.id || '')) +
+    dealsText_(v.phone) +
     (office && (office.topic || office.stage || office.decision) ? '📁 В «' + office.tab + '» (' + dmy_(office.date) + '): ' +
       [office.topic, office.stage, office.decision].filter(Boolean).map(htmlEsc_).join(' · ') + '\n' : '') +
     '\n📌 ' + htmlEsc_(origin || 'Менеджер клиента') + '\n' +
