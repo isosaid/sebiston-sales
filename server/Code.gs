@@ -383,7 +383,7 @@ function saveVisit_(v){
   v = v || {};
   if (!v.phone && !v.name) return { ok:false, err:'empty' };
   var lock = LockService.getScriptLock(); lock.waitLock(20000);
-  var cid = '', mgr = '', isNew = false, assigned = false;
+  var cid = '', mgr = '', isNew = false, assigned = false, origin = '';
   try {
     var sh = visitsSheet_();
     var id = String(v.id || ('visit-' + Date.now()));
@@ -404,18 +404,19 @@ function saveVisit_(v){
     if (hasQuiz) sh.getRange(found, 16, 1, VISIT_QUIZ.length).setValues([VISIT_QUIZ.map(function(k){ return quizVal_(v[k]); })]);
     cid = clientId_(v.phone, v.name, true);
     var mg = findManager_(v.phone); mgr = mg ? mg.mgr : '';
-    if (mgr) setAssigned_(v.phone, mgr);
+    if (mgr) { setAssigned_(v.phone, mgr); origin = 'Клиент из базы (вкладка «' + mg.tab + '»' + (mg.date ? ', с ' + mg.date : '') + ')'; }
     else if (cid) {                                    // в «Офисе» нет — берём закреплённого или закрепляем нового по очереди
       var before = assignedMgr_(v.phone, false);
       mgr = before || assignedMgr_(v.phone, !v.upBy);
       assigned = !before && !!mgr;
+      origin = before ? 'Клиент уже был закреплён с киоска' : 'В базе нет — назначен автоматически из списка менеджеров';
     }
     if (cid || mgr) sh.getRange(found, 21, 1, 2).setValues([[cid, mgr]]);
     SpreadsheetApp.flush();
   } finally { lock.releaseLock(); }
   var notified = false;
   // новый визит с киоска (не правка на сайте) и у клиента есть менеджер — пишем менеджеру в Telegram
-  if (isNew && !v.upBy && mgr) { try { notified = notifyManager_(mgr, v, cid, assigned); } catch (e) {} }
+  if (isNew && !v.upBy && mgr) { try { notified = notifyManager_(mgr, v, cid, assigned, origin); } catch (e) {} }
   return { ok:true, id:String(v.id || ''), clientId: cid, manager: mgr, assigned: assigned, notified: notified };
 }
 
@@ -453,6 +454,15 @@ function assignedMgr_(phone, assign){
   props.setProperty('KIOSK_RR', String((k + 1) % list.length));
   sh.getRange(row, 5).setValue(m);
   return m;
+}
+/* строка «чей клиент» для сообщения с кодом: менеджер из базы, закреплённый, или кто будет назначен следующим */
+function ownerLine_(phone){
+  var at = function(m){ var w = tgMgrs_()[String(m).toLowerCase()]; return m + (w && w.user ? ' (@' + w.user + ')' : ''); };
+  var mg = findManager_(phone); if (mg) return '👔 Клиент менеджера: ' + at(mg.mgr) + ' — из базы, вкладка «' + mg.tab + '»\n';
+  var a = assignedMgr_(phone, false); if (a) return '👔 Клиент менеджера: ' + at(a) + ' — закреплён с киоска\n';
+  var list = kioskMgrs_(); if (!list.length) return '';
+  var k = +(PropertiesService.getScriptProperties().getProperty('KIOSK_RR') || 0);
+  return '🆕 Новый клиент — будет назначен автоматически: ' + at(list[k % list.length]) + '\n';
 }
 function setAssigned_(phone, mgr){            // менеджер найден в «Офисе» — помним его и в «ID клиентов»
   var ph = digitsOnly_(phone).slice(-9), sh = idsSheet_(), last = sh.getLastRow(); if (last < 2 || !mgr) return;
@@ -550,12 +560,12 @@ function tgMgrs_(){ try{ return JSON.parse(PropertiesService.getScriptProperties
 function htmlEsc_(x){ return String(x == null ? '' : x).replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;'); }
 
 /* «Ваш клиент пришёл в офис» — в группу менеджеров (или лично менеджеру, если группы нет) */
-function notifyManager_(mgr, v, cid, isNewClient){
+function notifyManager_(mgr, v, cid, isNewClient, origin){
   if(!tgToken_()) return false;
   tgPoll_();
   var props = PropertiesService.getScriptProperties(), group = props.getProperty('TG_GROUP');
   var who = tgMgrs_()[String(mgr).toLowerCase()];
-  var tag = who ? (who.user ? '@' + who.user : '<a href="tg://user?id=' + who.id + '">' + htmlEsc_(mgr) + '</a>') : '<b>' + htmlEsc_(mgr) + '</b>';
+  var tag = htmlEsc_(mgr) + (who ? (who.user ? ' (@' + who.user + ')' : ' (<a href="tg://user?id=' + who.id + '">отметить</a>)') : '');
   var jk = Array.isArray(v.jk) ? v.jk.join(', ') : (v.jk || '');
   var text = (isNewClient ? '🆕 <b>Новый клиент в офисе — закреплён за вами</b>\n\n' : '🏢 <b>Ваш клиент пришёл в офис</b>\n\n') +
     '👤 ' + htmlEsc_(v.name || '—') + '\n' +
@@ -564,7 +574,8 @@ function notifyManager_(mgr, v, cid, isNewClient){
     (v.role ? '🏷 ' + htmlEsc_(v.role) + (v.mode ? ' · ' + htmlEsc_(v.mode) : '') + '\n' : '') +
     (v.goal ? '🎯 ' + htmlEsc_(v.goal) + '\n' : '') +
     (jk ? '🏠 ' + htmlEsc_(jk) + '\n' : '') +
-    '\nМенеджер: ' + tag + ' — встретьте, пожалуйста, клиента.';
+    '\n📌 ' + htmlEsc_(origin || 'Менеджер клиента') + '\n' +
+    '👔 <b>Менеджер: </b>' + tag + '\n\nВстретьте, пожалуйста, клиента.';
   var targets = group ? [group] : (who ? [String(who.id)] : Object.keys(tgChats_()));
   var ok = false;
   targets.forEach(function(id){ var r = tg_('sendMessage', { chat_id: Number(id), text: text, parse_mode: 'HTML', disable_web_page_preview: true }); ok = ok || !!(r && r.ok); });
@@ -695,12 +706,16 @@ function otpRequest_(q){
   var req = Utilities.getUuid().replace(/-/g, '').slice(0, 16);
   c.put('otp_' + req, JSON.stringify({ phone: ph, code: code, ok:false }), OTP_TTL);
   c.put('otp_last_' + ph, req, OTP_TTL);
-  var cl = findClient_(ph);
+  var cl = findClient_(ph), mg = findManager_(ph);
+  var mgr = mg ? mg.mgr : assignedMgr_(ph, false), cid = clientId_(ph, '', false);
   var role = String(q.role || ''), pretty = '+' + ph.replace(/^(992)(\d{2})(\d{3})(\d{2})(\d{2})$/, '$1 $2 $3 $4 $5');
+  var who = mgr ? tgMgrs_()[String(mgr).toLowerCase()] : null;
   var text = '🔔 Заявка с киоска Sebiston\n' +
              'Роль: ' + (role || '—') + '\n' +
              'Телефон: ' + pretty + '\n' +
              (cl && cl.name ? 'В базе: ' + cl.name + '\n' : 'В базе не найден\n') +
+             (cid ? '🆔 ID клиента: ' + cid + '\n' : '') +
+             ownerLine_(ph) +
              '\nКод подтверждения: ' + code + '\n\n' +
              'Введите код на киоске сами, сообщите его гостю или нажмите «Подтвердить».';
   ids.forEach(function(id){
