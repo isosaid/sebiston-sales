@@ -855,18 +855,25 @@ function makeYT(id){
   const cmd=(func,args)=>{ try{ f.contentWindow.postMessage(JSON.stringify({event:"command",func,args:args||[]}),"*"); }catch(e){} };
   f.addEventListener("load",()=>{ let n=0; const ping=setInterval(()=>{               // подписка на события плеера + принудительный запуск
       try{ f.contentWindow.postMessage(JSON.stringify({event:"listening",id,channel:"widget"}),"*"); }catch(e){}
-      cmd("mute"); cmd("setPlaybackQuality",["hd1080"]); cmd("playVideo");
+      cmd("mute"); cmd("setPlaybackQuality",["highres"]); cmd("setPlaybackQuality",["hd1080"]); cmd("playVideo");
       if(++n>10||f.classList.contains("live")) clearInterval(ping); },700); });
   return f;
 }
-function ytPlaying(f){ if(!f||f._shown) return; f._shown=true;
-  setTimeout(()=>{ f.classList.add("live");                                          // небольшая пауза — YouTube успевает поднять качество
+const HDQ=/^(hd720|hd1080|hd1440|hd2160|highres)$/;
+/* показываем ролик только когда YouTube уже играет в HD (или через 5 с, если качество не сообщил) — без мутной картинки в начале */
+function ytPlaying(f){ if(!f||f._shown) return;
+  if(!HDQ.test(f._q||"") && !f._waitHD){ f._waitHD=Date.now(); }
+  if(!HDQ.test(f._q||"") && Date.now()-f._waitHD<5000){ clearTimeout(f._hdT); f._hdT=setTimeout(()=>ytPlaying(f),300); return; }
+  f._shown=true;
+  setTimeout(()=>{ f.classList.add("live");
     if(f.id==="yt"){ const sd=$("#side"); if(sd) sd.classList.add("yt"); }
     if(f.id==="ytA") setTimeout(()=>{ if(f.isConnected) av.pause(); },900); },1200); }
 addEventListener("message",e=>{ if(!/youtube/.test(e.origin)) return;
   const f=[$("#yt"),$("#ytA")].find(x=>x&&x.contentWindow===e.source); if(!f) return;
   try{ const d=typeof e.data==="string"?JSON.parse(e.data):e.data;
     const st = d.event==="onStateChange" ? d.info : (d.event==="infoDelivery"&&d.info&&typeof d.info.playerState==="number" ? d.info.playerState : null);
+    if(d.info && typeof d.info.playbackQuality==="string") f._q=d.info.playbackQuality;
+    if(d.event==="onPlaybackQualityChange" && typeof d.info==="string") f._q=d.info;
     if(st===1) ytPlaying(f);
     if(d.event==="onError"){ if(f.id==="ytA"){ ytBad=true; } f.remove(); if(f.id==="yt"){ const sd=$("#side"); if(sd) sd.classList.remove("yt"); } }
   }catch(_){} });
@@ -898,7 +905,10 @@ function sizeYT(){ const f=$("#yt"), sd=$("#side"); if(!f||!sd) return;
 /* сцена масштабируется (transform), поэтому плееру даём настоящий размер в пикселях экрана и уменьшаем обратно —
    YouTube выбирает качество по размеру плеера, так он грузит HD, а не маленькую версию */
 function stageScale(){ const m=/scale\(([\d.]+)\)/.exec($("#stage").style.transform||""); return m?parseFloat(m[1]):1; }
-function placeYT(f,W,H,L,T){ const k=Math.max(1,stageScale())*(window.devicePixelRatio>1?1:1);
+/* плеер рисуем крупно (не меньше ~1600 px по меньшей стороне, с учётом плотности экрана) и уменьшаем —
+   YouTube тогда сразу отдаёт 1080p и выше, а не 360p/480p */
+function placeYT(f,W,H,L,T){ const dpr=Math.min(2,window.devicePixelRatio||1);
+  const k=Math.min(4, Math.max(1, stageScale()*dpr, 1600/Math.max(1,Math.min(W,H))));
   Object.assign(f.style,{width:W*k+"px",height:H*k+"px",left:L+"px",top:T+"px",transformOrigin:"0 0",transform:k!==1?`scale(${1/k})`:""}); }
 function mountYT(){ const sd=$("#side"); if(!sd||$("#yt")||isM()||!navigator.onLine) return;
   const f=makeYT("yt"); sd.appendChild(f); sizeYT(); }
