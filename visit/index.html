@@ -370,6 +370,7 @@ ru:{
  visible:"Данные видны только сотрудникам, которые работают с вашим обращением.",
  submit:"Зарегистрировать визит", found:"Клиент найден в базе", confirmed:"Номер подтвержден", yourphone:"Ваш номер телефона",
  ok_title:"Ваш визит зарегистрирован", ok_btn:"Готово",
+ ok_buyer_m:"Ваш персональный менеджер сопроводит вас<br>и ответит на все ваши вопросы.", ok_mgr_new:"Ваш персональный менеджер",
  ok_id:"Ваш ID клиента", ok_mgr:"Ваш менеджер", ok_mgr_note:"Мы уже сообщили ему, что вы пришли", ok_mgr_note2:"Подойдите к нему на ресепшн", ok_wait:"получаем…", ok_id_note:"Назовите его менеджеру",
  ok_buyer:"Наш менеджер Нозия сопроводит вас и<br>ответит на все ваши вопросы.",
  ok_client:"Вы можете подойти к своему менеджеру,<br>благодарим за повторный визит нашего офиса.",
@@ -412,6 +413,7 @@ tg:{
  visible:"Маълумот танҳо барои кормандоне намоён аст, ки бо муроҷиати шумо кор мекунанд.",
  submit:"Сабти ташриф", found:"Муштарӣ дар база ёфт шуд", confirmed:"Рақам тасдиқ шуд", yourphone:"Рақами телефони шумо",
  ok_title:"Ташрифи шумо сабт шуд", ok_btn:"Тайёр",
+ ok_buyer_m:"Менеҷери шахсии шумо шуморо ҳамроҳӣ мекунад<br>ва ба ҳамаи саволҳоятон ҷавоб медиҳад.", ok_mgr_new:"Менеҷери шахсии шумо",
  ok_id:"ID-и мизоҷи шумо", ok_mgr:"Менеҷери шумо", ok_mgr_note:"Мо ба ӯ хабар додем, ки шумо омадед", ok_mgr_note2:"Ба назди ӯ дар ресепшн равед", ok_wait:"гирифта истодаем…", ok_id_note:"Онро ба менеҷер гӯед",
  ok_buyer:"Менеҷери мо Нозия шуморо ҳамроҳӣ мекунад ва ба ҳамаи саволҳои шумо ҷавоб медиҳад.",
  ok_client:"Шумо метавонед назди менеҷери худ равед. Барои ташрифи такрорӣ ба офиси мо ташаккур.",
@@ -773,7 +775,7 @@ addEventListener("online",flush); setInterval(flush,30000); flush();
 
 /* ---------- success screen ---------- */
 function showDone(){
-  const P = role==="buyer" ? {c:339,ti:451,tx:509,b:690} : {c:326,ti:438,tx:496,b:797};
+  const P = role==="buyer" ? {c:339,ti:451,tx:509,b:712} : {c:326,ti:438,tx:496,b:797};
   $("#okTick").style.top=P.c+"px"; $("#okTitle").style.top=P.ti+"px";
   const tx=$("#okText"); tx.style.top=P.tx+"px"; tx.innerHTML=t("ok_"+role);
   const fb=$("#finish"); fb.style.top=P.b+"px";
@@ -784,19 +786,20 @@ function showDone(){
 }
 let doneT=null, doneId=null, doneInfo=null, doneWaitT=null;
 /* сервер вернул ID клиента и менеджера (из вкладки «Офис») — показываем их гостю */
-function onVisitSaved(id,j){ if(id!==doneId) return; doneInfo={cid:j.clientId||"", mgr:j.manager||"", sent:!!j.notified}; clearTimeout(doneWaitT); drawOkInfo(); }
+function onVisitSaved(id,j){ if(id!==doneId) return; doneInfo={cid:j.clientId||"", mgr:j.manager||"", sent:!!j.notified, isNew:!!j.assigned}; clearTimeout(doneWaitT); drawOkInfo(); }
 function drawOkInfo(){
   const box=$("#okInfo"); if(!box) return;
   const I=doneInfo||{}, pre=profile||{};
   const cid=I.cid||pre.clientId||"", mgr=I.mgr||pre.manager||"", waiting=!doneInfo && !!doneId;
   if(!cid && !mgr && !waiting){ box.className="okinfo"; box.innerHTML=""; return; }
   box.className="okinfo on"+(!cid&&waiting?" wait":"");
+  if(mgr && role==="buyer") $("#okText").innerHTML=t("ok_buyer_m");      // без «Нозии» — называем закреплённого менеджера
   box.innerHTML=`<div class="ib"><div class="k">${t("ok_id")}</div><div class="v">${esc(cid||t("ok_wait"))}</div><div class="n">${t("ok_id_note")}</div></div>`+
-    (mgr?`<div class="ib wide"><div class="k">${t("ok_mgr")}</div><div class="v">${esc(mgr)}</div><div class="n">${I.sent?t("ok_mgr_note"):t("ok_mgr_note2")}</div></div>`:"");
+    (mgr?`<div class="ib wide"><div class="k">${t(I.isNew?"ok_mgr_new":"ok_mgr")}</div><div class="v">${esc(mgr)}</div><div class="n">${I.sent?t("ok_mgr_note"):t("ok_mgr_note2")}</div></div>`:"");
 }
 
 /* ---------- navigation ---------- */
-function show(id){ $$(".screen").forEach(s=>s.classList.toggle("on",s.id===id)); if(document.documentElement.classList.contains("m")) scrollTo(0,0); }
+function show(id){ $$(".screen").forEach(s=>s.classList.toggle("on",s.id===id)); if(id!=="form"){ const h=$("#swipeHint"); if(h){ h.classList.remove("on"); } } if(document.documentElement.classList.contains("m")) scrollTo(0,0); }
 $("#tabs").addEventListener("click",e=>{const b=e.target.closest("button");if(!b||b.dataset.role===role)return; role=b.dataset.role;mode="new";reset();render();});
 $("#segs").addEventListener("click",e=>{const b=e.target.closest("button");if(!b||b.dataset.mode===mode)return; mode=b.dataset.mode;reset();render();});
 $("#submit").addEventListener("click",()=>{

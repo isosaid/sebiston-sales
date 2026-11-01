@@ -383,7 +383,7 @@ function saveVisit_(v){
   v = v || {};
   if (!v.phone && !v.name) return { ok:false, err:'empty' };
   var lock = LockService.getScriptLock(); lock.waitLock(20000);
-  var cid = '', mgr = '', isNew = false;
+  var cid = '', mgr = '', isNew = false, assigned = false;
   try {
     var sh = visitsSheet_();
     var id = String(v.id || ('visit-' + Date.now()));
@@ -404,13 +404,19 @@ function saveVisit_(v){
     if (hasQuiz) sh.getRange(found, 16, 1, VISIT_QUIZ.length).setValues([VISIT_QUIZ.map(function(k){ return quizVal_(v[k]); })]);
     cid = clientId_(v.phone, v.name, true);
     var mg = findManager_(v.phone); mgr = mg ? mg.mgr : '';
+    if (mgr) setAssigned_(v.phone, mgr);
+    else if (cid) {                                    // в «Офисе» нет — берём закреплённого или закрепляем нового по очереди
+      var before = assignedMgr_(v.phone, false);
+      mgr = before || assignedMgr_(v.phone, !v.upBy);
+      assigned = !before && !!mgr;
+    }
     if (cid || mgr) sh.getRange(found, 21, 1, 2).setValues([[cid, mgr]]);
     SpreadsheetApp.flush();
   } finally { lock.releaseLock(); }
   var notified = false;
   // новый визит с киоска (не правка на сайте) и у клиента есть менеджер — пишем менеджеру в Telegram
-  if (isNew && !v.upBy && mgr) { try { notified = notifyManager_(mgr, v, cid); } catch (e) {} }
-  return { ok:true, id:String(v.id || ''), clientId: cid, manager: mgr, notified: notified };
+  if (isNew && !v.upBy && mgr) { try { notified = notifyManager_(mgr, v, cid, assigned); } catch (e) {} }
+  return { ok:true, id:String(v.id || ''), clientId: cid, manager: mgr, assigned: assigned, notified: notified };
 }
 
 /* ---------- ID клиента: один номер телефона = один ID (SB-10001, SB-10002 …) ---------- */
@@ -418,11 +424,40 @@ function idsSheet_(){
   var ss = SpreadsheetApp.getActive(), sh = ss.getSheetByName('ID клиентов');
   if (!sh) {
     sh = ss.insertSheet('ID клиентов');
-    sh.getRange(1, 1, 1, 4).setValues([['ID клиента','Телефон','ФИО','Создан']])
+    sh.getRange(1, 1, 1, 5).setValues([['ID клиента','Телефон','ФИО','Создан','Закреплённый менеджер']])
       .setBackground('#0E6D23').setFontColor('#FFFFFF').setFontWeight('bold');
     sh.setFrozenRows(1); sh.getRange('B:B').setNumberFormat('@');
   }
+  if (String(sh.getRange(1, 5).getValue()) !== 'Закреплённый менеджер')
+    sh.getRange(1, 5).setValue('Закреплённый менеджер').setBackground('#0E6D23').setFontColor('#FFFFFF').setFontWeight('bold');
   return sh;
+}
+
+/* Кому закреплять новых клиентов с киоска. Пусто — все активные менеджеры с листа «Пользователи» (по очереди).
+   Можно вписать имена вручную, например: ['Нозия', 'Судоба']. */
+var KIOSK_MGRS = [];
+function kioskMgrs_(){
+  if (KIOSK_MGRS.length) return KIOSK_MGRS.slice();
+  return allUsers_().filter(function(x){ return x.on && x.r === 'manager' && String(x.n).trim(); }).map(function(x){ return String(x.n).trim(); });
+}
+/* закреплённый за номером менеджер (лист «ID клиентов», колонка 5); assign — закрепить следующего по очереди */
+function assignedMgr_(phone, assign){
+  var ph = digitsOnly_(phone).slice(-9); if (ph.length < 9) return '';
+  var sh = idsSheet_(), last = sh.getLastRow(); if (last < 2) return '';
+  var vals = sh.getRange(2, 1, last - 1, 5).getValues(), row = 0;
+  for (var i = 0; i < vals.length; i++) if (digitsOnly_(vals[i][1]).slice(-9) === ph) { row = i + 2; if (String(vals[i][4]).trim()) return String(vals[i][4]).trim(); break; }
+  if (!assign || !row) return '';
+  var list = kioskMgrs_(); if (!list.length) return '';
+  var props = PropertiesService.getScriptProperties(), k = +(props.getProperty('KIOSK_RR') || 0);
+  var m = list[k % list.length];
+  props.setProperty('KIOSK_RR', String((k + 1) % list.length));
+  sh.getRange(row, 5).setValue(m);
+  return m;
+}
+function setAssigned_(phone, mgr){            // менеджер найден в «Офисе» — помним его и в «ID клиентов»
+  var ph = digitsOnly_(phone).slice(-9), sh = idsSheet_(), last = sh.getLastRow(); if (last < 2 || !mgr) return;
+  var vals = sh.getRange(2, 2, last - 1, 4).getValues();
+  for (var i = 0; i < vals.length; i++) if (digitsOnly_(vals[i][0]).slice(-9) === ph) { if (String(vals[i][3]) !== mgr) sh.getRange(i + 2, 5).setValue(mgr); return; }
 }
 function clientId_(phone, name, create){
   var ph = digitsOnly_(phone).slice(-9); if (ph.length < 9) return '';
@@ -515,14 +550,14 @@ function tgMgrs_(){ try{ return JSON.parse(PropertiesService.getScriptProperties
 function htmlEsc_(x){ return String(x == null ? '' : x).replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;'); }
 
 /* «Ваш клиент пришёл в офис» — в группу менеджеров (или лично менеджеру, если группы нет) */
-function notifyManager_(mgr, v, cid){
+function notifyManager_(mgr, v, cid, isNewClient){
   if(!tgToken_()) return false;
   tgPoll_();
   var props = PropertiesService.getScriptProperties(), group = props.getProperty('TG_GROUP');
   var who = tgMgrs_()[String(mgr).toLowerCase()];
   var tag = who ? (who.user ? '@' + who.user : '<a href="tg://user?id=' + who.id + '">' + htmlEsc_(mgr) + '</a>') : '<b>' + htmlEsc_(mgr) + '</b>';
   var jk = Array.isArray(v.jk) ? v.jk.join(', ') : (v.jk || '');
-  var text = '🏢 <b>Ваш клиент пришёл в офис</b>\n\n' +
+  var text = (isNewClient ? '🆕 <b>Новый клиент в офисе — закреплён за вами</b>\n\n' : '🏢 <b>Ваш клиент пришёл в офис</b>\n\n') +
     '👤 ' + htmlEsc_(v.name || '—') + '\n' +
     '📞 ' + htmlEsc_(v.phone || '—') + '\n' +
     (cid ? '🆔 ' + htmlEsc_(cid) + '\n' : '') +
@@ -677,7 +712,7 @@ function otpRequest_(q){
 function otpState_(req){ var raw = CacheService.getScriptCache().get('otp_' + String(req || '')); return raw ? JSON.parse(raw) : null; }
 function otpDone_(o){ var cl = findClient_(o.phone) || {}, mg = findManager_(o.phone);
   return { ok:true, verified:true, name: cl.name || (mg && mg.name) || '', line: cl.line || '', by: o.by || '',
-           manager: mg ? mg.mgr : '', clientId: clientId_(o.phone, '', false) }; }
+           manager: mg ? mg.mgr : assignedMgr_(o.phone, false), clientId: clientId_(o.phone, '', false) }; }
 
 function otpStatus_(q){
   tgPoll_();
