@@ -166,6 +166,15 @@ html.m #body .otpmsg{position:static;width:auto;margin:-8px 0 16px}
 .oktitle{left:482px;width:835px;text-align:center;font:700 25px/25px Inter,sans-serif;letter-spacing:-.7px;color:var(--ink)}
 .oktext{left:600px;width:600px;text-align:center;font:400 16px/19px Inter,sans-serif;letter-spacing:-.24px;color:var(--ink);white-space:normal}
 .okbtn{left:591px;width:617px}
+/* ID клиента и его менеджер на экране «Визит зарегистрирован» */
+.okinfo{position:absolute;left:600px;width:600px;display:flex;gap:12px;opacity:0;transform:translateY(6px);transition:opacity .35s,transform .35s}
+.okinfo.on{opacity:1;transform:none}
+.okinfo .ib{flex:1;min-width:0;background:var(--g-soft);border:1px solid #cfe9d6;border-radius:14px;padding:14px 18px;text-align:left}
+.okinfo .ib.wide{flex:1.5}
+.okinfo .k{font:500 13px/16px Inter,sans-serif;color:#5b7a64;letter-spacing:-.1px}
+.okinfo .v{font:700 22px/28px Inter,sans-serif;color:#14632f;letter-spacing:-.4px;margin-top:3px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.okinfo .n{font:500 12.5px/16px Inter,sans-serif;color:#5b7a64;margin-top:3px}
+.okinfo.wait .v{color:#9aa69e;font-weight:600}
 
 
 /* ---------- buyer: scrollable card with the questionnaire under the fields ---------- */
@@ -268,11 +277,12 @@ html.m #body{scroll-margin-bottom:40vh}
 html.m #submit{position:sticky;bottom:calc(10px + env(safe-area-inset-bottom));z-index:5;width:auto!important;height:58px;line-height:58px;margin-top:12px;font-size:18px;box-shadow:0 10px 24px rgba(39,170,69,.28)}
 html.m #submit.dis{box-shadow:none}
 /* success */
-html.m #done .okcard{position:static;align-self:stretch;grid-column:1/-1;grid-row:2/6;width:auto;height:auto;margin-top:22px;border-radius:16px}
+html.m #done .okcard{position:static;align-self:stretch;grid-column:1/-1;grid-row:2/7;width:auto;height:auto;margin-top:22px;border-radius:16px}
 html.m #done .tick{position:static;grid-column:1/-1;grid-row:2;justify-self:center;margin-top:56px;z-index:1}
 html.m #done .oktitle{position:static;grid-column:1/-1;grid-row:3;width:auto;margin-top:26px;padding:0 20px;font-size:22px;line-height:28px;white-space:normal;z-index:1}
 html.m #done .oktext{position:static;grid-column:1/-1;grid-row:4;width:auto;margin-top:12px;padding:0 24px;font-size:16px;line-height:22px;z-index:1}
-html.m #done .okbtn{position:static;grid-column:1/-1;grid-row:5;width:auto!important;margin:40px 20px 24px;z-index:1}
+html.m #done .okinfo{position:static;grid-column:1/-1;grid-row:5;width:auto;margin:22px 20px 0;flex-direction:column;z-index:1}
+html.m #done .okbtn{position:static;grid-column:1/-1;grid-row:6;width:auto!important;margin:40px 20px 24px;z-index:1}
 /* pickers become a bottom sheet */
 html.m #ddCatch{position:fixed;inset:0;background:rgba(0,0,0,.42)}
 html.m #dd{position:fixed;left:0!important;right:0;top:auto!important;bottom:0;width:auto;max-height:80dvh;overflow:auto;border-radius:22px 22px 0 0;
@@ -328,6 +338,7 @@ html.m #dd .opt svg{top:17px}
     <div class="tick" id="okTick"><svg width="38" height="38" viewBox="0 0 38 38" fill="none" stroke="#2f9446" stroke-width="4.6" stroke-linecap="round" stroke-linejoin="round"><path d="M6 20.5l9 9.5L32 7"/></svg></div>
     <div class="t oktitle" id="okTitle" data-i="ok_title"></div>
     <div class="t oktext" id="okText"></div>
+    <div class="okinfo" id="okInfo"></div>
     <button class="btn okbtn" id="finish" data-i="ok_btn"></button>
       </div>
   </section>
@@ -359,6 +370,7 @@ ru:{
  visible:"Данные видны только сотрудникам, которые работают с вашим обращением.",
  submit:"Зарегистрировать визит", found:"Клиент найден в базе", confirmed:"Номер подтвержден", yourphone:"Ваш номер телефона",
  ok_title:"Ваш визит зарегистрирован", ok_btn:"Готово",
+ ok_id:"Ваш ID клиента", ok_mgr:"Ваш менеджер", ok_mgr_note:"Мы уже сообщили ему, что вы пришли", ok_mgr_note2:"Подойдите к нему на ресепшн", ok_wait:"получаем…", ok_id_note:"Назовите его менеджеру",
  ok_buyer:"Наш менеджер Нозия сопроводит вас и<br>ответит на все ваши вопросы.",
  ok_client:"Вы можете подойти к своему менеджеру,<br>благодарим за повторный визит нашего офиса.",
  ok_broker:"Рады видеть вас и вашего<br>клиента в нашем офисе.",
@@ -400,6 +412,7 @@ tg:{
  visible:"Маълумот танҳо барои кормандоне намоён аст, ки бо муроҷиати шумо кор мекунанд.",
  submit:"Сабти ташриф", found:"Муштарӣ дар база ёфт шуд", confirmed:"Рақам тасдиқ шуд", yourphone:"Рақами телефони шумо",
  ok_title:"Ташрифи шумо сабт шуд", ok_btn:"Тайёр",
+ ok_id:"ID-и мизоҷи шумо", ok_mgr:"Менеҷери шумо", ok_mgr_note:"Мо ба ӯ хабар додем, ки шумо омадед", ok_mgr_note2:"Ба назди ӯ дар ресепшн равед", ok_wait:"гирифта истодаем…", ok_id_note:"Онро ба менеҷер гӯед",
  ok_buyer:"Менеҷери мо Нозия шуморо ҳамроҳӣ мекунад ва ба ҳамаи саволҳои шумо ҷавоб медиҳад.",
  ok_client:"Шумо метавонед назди менеҷери худ равед. Барои ташрифи такрорӣ ба офиси мо ташаккур.",
  ok_broker:"Шодем, ки шуморо ва мизоҷатонро дар офиси мо мебинем.",
@@ -575,7 +588,7 @@ async function callApi(a,extra){
   try{ const r=await fetch(SHEET_API,{method:"POST",signal:ac.signal,headers:{"Content-Type":"text/plain;charset=utf-8"},body:JSON.stringify(Object.assign({a},extra||{}))});
        return await r.json(); }catch(e){ return {ok:false,err:"net"}; } finally{ clearTimeout(to); }
 }
-function onVerified(j){ stopOtpPoll(); profile={name:j.name||"", line:j.line||"", by:j.by||""}; verified=true; otpMsg=""; render(); }
+function onVerified(j){ stopOtpPoll(); profile={name:j.name||"", line:j.manager?(t("ok_mgr")+": "+j.manager+(j.clientId?" · ID "+j.clientId:"")):(j.line||""), by:j.by||"", manager:j.manager||"", clientId:j.clientId||""}; verified=true; otpMsg=""; render(); }
 function startOtpPoll(){ stopOtpPoll(); const req=otpReq;
   otpTimer=setInterval(async()=>{ if(verified||otpReq!==req){ stopOtpPoll(); return; }
     const j=await callApi("otp_status",{req});
@@ -718,7 +731,8 @@ async function sendSheets(v){
     const m=/Режим: ([^\n]+)/.exec(F.COMMENTS||""); v.v.mode=m?m[1]:""; }
   let txt="";
   try{ const r=await fetch(SHEET_API,{method:"POST",headers:{"Content-Type":"text/plain;charset=utf-8"},body:JSON.stringify(Object.assign({a:"visit",v:v.v}, compatFlat(v.v)))});
-       txt=await r.text(); logSend("HTTP "+r.status+": "+txt.slice(0,300)); const j=JSON.parse(txt); return !!(j&&j.ok); }
+       txt=await r.text(); logSend("HTTP "+r.status+": "+txt.slice(0,300)); const j=JSON.parse(txt);
+       if(j&&j.ok) onVisitSaved(v.id,j); return !!(j&&j.ok); }
   catch(e){ logSend("ОШИБКА: "+e+(txt?" | ответ: "+txt.slice(0,300):"")); return false; }
 }
 function logSend(m){ try{ const L=JSON.parse(localStorage.getItem("sebiston_send_log")||"[]"); L.unshift(new Date().toLocaleString("ru")+" — "+m); localStorage.setItem("sebiston_send_log",JSON.stringify(L.slice(0,15))); }catch(e){} }
@@ -763,9 +777,23 @@ function showDone(){
   $("#okTick").style.top=P.c+"px"; $("#okTitle").style.top=P.ti+"px";
   const tx=$("#okText"); tx.style.top=P.tx+"px"; tx.innerHTML=t("ok_"+role);
   const fb=$("#finish"); fb.style.top=P.b+"px";
-  show("done"); doneT=setTimeout(goHome,20000);
+  $("#okInfo").style.top=(role==="buyer"?578:572)+"px";
+  doneInfo=null; drawOkInfo();
+  clearTimeout(doneWaitT); doneWaitT=setTimeout(()=>{ if(!doneInfo){ doneId=null; drawOkInfo(); } },35000);   // нет связи — блок просто не показываем
+  show("done"); doneT=setTimeout(goHome,30000);
 }
-let doneT=null;
+let doneT=null, doneId=null, doneInfo=null, doneWaitT=null;
+/* сервер вернул ID клиента и менеджера (из вкладки «Офис») — показываем их гостю */
+function onVisitSaved(id,j){ if(id!==doneId) return; doneInfo={cid:j.clientId||"", mgr:j.manager||"", sent:!!j.notified}; clearTimeout(doneWaitT); drawOkInfo(); }
+function drawOkInfo(){
+  const box=$("#okInfo"); if(!box) return;
+  const I=doneInfo||{}, pre=profile||{};
+  const cid=I.cid||pre.clientId||"", mgr=I.mgr||pre.manager||"", waiting=!doneInfo && !!doneId;
+  if(!cid && !mgr && !waiting){ box.className="okinfo"; box.innerHTML=""; return; }
+  box.className="okinfo on"+(!cid&&waiting?" wait":"");
+  box.innerHTML=`<div class="ib"><div class="k">${t("ok_id")}</div><div class="v">${esc(cid||t("ok_wait"))}</div><div class="n">${t("ok_id_note")}</div></div>`+
+    (mgr?`<div class="ib wide"><div class="k">${t("ok_mgr")}</div><div class="v">${esc(mgr)}</div><div class="n">${I.sent?t("ok_mgr_note"):t("ok_mgr_note2")}</div></div>`:"");
+}
 
 /* ---------- navigation ---------- */
 function show(id){ $$(".screen").forEach(s=>s.classList.toggle("on",s.id===id)); if(document.documentElement.classList.contains("m")) scrollTo(0,0); }
@@ -774,11 +802,11 @@ $("#segs").addEventListener("click",e=>{const b=e.target.closest("button");if(!b
 $("#submit").addEventListener("click",()=>{
   if($("#submit").classList.contains("dis")) return;
   if(!valid()){ tried=true; render(); return; }
-  const v=buildVisit(); setQ([...getQ(),v]); flush();   // queued first, so a visit is never lost on a bad connection
+  const v=buildVisit(); doneId=v.id; setQ([...getQ(),v]); flush();   // queued first, so a visit is never lost on a bad connection
   showDone(); });
 $("#finish").addEventListener("click",goHome);
 const isM=()=>document.documentElement.classList.contains("m");   // phones open straight on the form
-function goHome(){ clearTimeout(doneT); reset(); role="buyer"; mode="new"; render(); show("form"); armAttract(); }
+function goHome(){ clearTimeout(doneT); clearTimeout(doneWaitT); doneId=null; doneInfo=null; reset(); role="buyer"; mode="new"; render(); show("form"); armAttract(); }
 
 let idle=null;
 function bump(){ clearTimeout(idle); idle=setTimeout(()=>{ if($("#form").classList.contains("on")) goHome(); },90000); }
@@ -840,7 +868,7 @@ armAttract();
 function setLang(l){ lang=l; document.documentElement.lang=l==="tg"?"tg":"ru";
   $$("[data-lang]").forEach(b=>b.classList.toggle("on",b.dataset.lang===l));
   $$("[data-i]").forEach(el=>{ if(T[l][el.dataset.i]!==undefined) el.textContent=T[l][el.dataset.i]; });
-  render(); if($("#done").classList.contains("on")) $("#okText").innerHTML=t("ok_"+role); }
+  render(); if($("#done").classList.contains("on")){ $("#okText").innerHTML=t("ok_"+role); drawOkInfo(); } }
 document.addEventListener("click",e=>{const b=e.target.closest("[data-lang]"); if(b) setLang(b.dataset.lang);});
 
 /* ---------- левая колонка: ролик с YouTube, подогнанный под размер колонки ----------
