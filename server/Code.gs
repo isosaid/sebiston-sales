@@ -358,7 +358,9 @@ var VISIT_HEAD = ['Дата/время','Роль','Режим','ФИО','Тел
                   'Интересующие ЖК','Цель визита','Агентство','Компания','Направление','Язык','ID',
                   'Изменено','Кем',
                   'Район','Тип квартиры','Площадь','Этаж','Откуда узнали',
-                  'ID клиента','Менеджер клиента'];
+                  'ID клиента','Менеджер клиента',
+                  'Продажа','Объект продажи','Тип недвижимости','Блок','Квартира №','Этаж','Сумма, $'];
+var VISIT_SALE = ['sale','sobj','stype','sblock','sapt','sfloor','stotal'];   // продажа на визите → колонки 23–29
 var VISIT_QUIZ = ['district','rooms','area','floor','source'];   // поля анкеты → колонки 16–20
 
 function visitsSheet_(){
@@ -412,6 +414,8 @@ function saveVisit_(v){
       origin = before ? 'Клиент уже был закреплён с киоска' : 'В базе нет — назначен автоматически из списка менеджеров';
     }
     if (cid || mgr) sh.getRange(found, 21, 1, 2).setValues([[cid, mgr]]);
+    if (Object.prototype.hasOwnProperty.call(v, 'sale'))
+      sh.getRange(found, 23, 1, VISIT_SALE.length).setValues([VISIT_SALE.map(function(k){ return v.sale ? (v[k] == null ? '' : v[k]) : ''; })]);
     SpreadsheetApp.flush();
   } finally { lock.releaseLock(); }
   var notified = false, hist = [];
@@ -589,7 +593,9 @@ function listVisits_(){
              id:String(r[12]||''), upAt:String(r[13]||''), upBy:String(r[14]||''),
              district:String(r[15]||''), rooms:String(r[16]||''), area:String(r[17]||''),
              floor:String(r[18]||''), source:String(r[19]||''),
-             cid:String(r[20]||''), cmgr:String(r[21]||'') };
+             cid:String(r[20]||''), cmgr:String(r[21]||''),
+             sale:String(r[22]||''), sobj:String(r[23]||''), stype:String(r[24]||''), sblock:String(r[25]||''),
+             sapt:String(r[26]||''), sfloor:String(r[27]||''), stotal:String(r[28]||'') };
   });
 }
 function delVisit_(id){
