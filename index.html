@@ -102,6 +102,14 @@ input[aria-invalid="true"]{border-color:var(--red);background:var(--red-soft)}
 .chip[aria-pressed="true"]{background:var(--green-soft);border-color:var(--green);color:var(--green-d);font-weight:600}
 /* вкладка «Визиты» — крупные кнопки */
 #p-visits .chips{gap:10px}
+#p-visits .vform{scroll-margin-top:130px;background:var(--card);border:1px solid var(--line);border-radius:14px;padding:20px 22px 6px;margin:0 0 18px}
+#p-visits .vform-h{display:flex;align-items:center;gap:12px;margin:0 0 16px}
+#p-visits .vform-h h2{margin:0;font-size:18px;font-weight:700;letter-spacing:-.01em}
+#p-visits .vform-h .btn{margin-left:auto}
+#p-visits .vgrid{display:grid;grid-template-columns:repeat(auto-fit,minmax(300px,1fr));gap:0 32px}
+#p-visits .vform .actions{position:static;margin:4px -22px 0;padding:14px 22px;border-top:1px solid var(--line)}
+#p-visits .vadd{margin-left:auto}
+#p-visits .stats .stat.on .n{color:var(--green)}
 #p-visits .chip{font-size:16px;padding:13px 22px;min-height:50px;font-weight:600}
 #p-visits .chip[aria-pressed="true"]{font-weight:700}
 .chip.hot[aria-pressed="true"]{background:var(--amber-soft);border-color:var(--amber);color:var(--amber)}
@@ -367,7 +375,7 @@ a{color:var(--green-d)}
 :root:not([data-theme="light"]) .btn-main{color:#0B1A10}
 :root:not([data-theme="light"]) .btn-main:hover{background:#6FCB84}
 :root:not([data-theme="light"]) .ts-sun{color:var(--ink-3)}
-:root:not([data-theme="light"]) .tbl-wrap tr.editing td,.tbl-wrap tr.editing td.rowact{background:#2E2715}
+:root:not([data-theme="light"]) .tbl-wrap tr.editing td,:root:not([data-theme="light"]) .tbl-wrap tr.editing td.rowact{background:#2E2715}
 :root:not([data-theme="light"]) .dsec{background:#122019}
 }
 :root[data-theme="dark"] thead th{background:#1D3527;color:#E8EFE9;border-bottom:1px solid #2F4A39}
@@ -375,7 +383,7 @@ a{color:var(--green-d)}
 :root[data-theme="dark"] .btn-main{color:#0B1A10}
 :root[data-theme="dark"] .btn-main:hover{background:#6FCB84}
 :root[data-theme="dark"] .ts-sun{color:var(--ink-3)}
-:root[data-theme="dark"] .tbl-wrap tr.editing td,.tbl-wrap tr.editing td.rowact{background:#2E2715}
+:root[data-theme="dark"] .tbl-wrap tr.editing td,:root[data-theme="dark"] .tbl-wrap tr.editing td.rowact{background:#2E2715}
 :root[data-theme="dark"] .dsec{background:#122019}
 
 .sync[data-state]{display:inline-flex;align-items:center;gap:7px}
@@ -1178,22 +1186,21 @@ function initVisits(root){
   function visAllGoals(){ var s=[]; Object.keys(VIS_GOALS).forEach(function(r){ VIS_GOALS[r].forEach(function(g){ if(s.indexOf(g)<0) s.push(g); }); }); return s; }
 
   root.innerHTML =
-  '<p class="lede">Визиты приходят с киоска <b>/visit/</b>. Здесь их можно просматривать, вручную <b>добавить</b> или <b>исправить</b> (кнопка «изменить» в списке). Все правки <b>журналируются</b> — видно, кто и когда изменил. Фильтр по периоду и выгрузка в Excel/Word справа.</p>'+
-  '<div class="cols"><div class="formside">'+
+  '<p class="lede">Визиты в офис с киоска <b>/visit/</b> за выбранный период: сколько пришло покупателей, клиентов, брокеров и партнёров, что их интересует и откуда узнали о нас. Визит можно <b>добавить</b> вручную или <b>исправить</b> (кнопка «изменить» в таблице) — правки журналируются.</p>'+
+  '<div class="vform" data-f="vform" hidden>'+
+    '<div class="vform-h"><h2 data-f="vformTitle">Новый визит</h2><button type="button" class="btn btn-ghost btn-sm" data-f="vclose">Закрыть</button></div>'+
     '<div class="editbar" data-f="editbar" hidden><div><b>Редактирование визита</b> <span class="who2" data-f="editwho"></span></div>'+
       '<button type="button" class="btn btn-ghost btn-sm" data-f="cancelEdit">Отменить правку</button></div>'+
-
+    '<div class="vgrid"><div>'+
     '<div class="block"><div class="block-h"><h2>Кто пришёл</h2></div>'+
       '<div class="field"><label class="lbl">Роль <span class="req">•</span></label>'+chipsHTML("vrole", VIS_ROLES, "Покупатель")+'</div>'+
       '<div class="field"><label class="lbl">Режим</label>'+chipsHTML("vmode", VIS_MODES, "")+'<p class="hint">Для клиента/брокера/партнёра — первый визит или уже зарегистрирован.</p></div>'+
     '</div>'+
-
     '<div class="block"><div class="block-h"><h2>Посетитель</h2></div>'+
       '<div class="field"><label class="lbl">ФИО <span class="req">•</span></label><input type="text" data-f="vname" autocomplete="name"><p class="err" data-f="e-vname" hidden>Укажите ФИО или телефон</p></div>'+
       '<div class="field"><label class="lbl">Телефон</label><input type="tel" data-f="vphone" inputmode="tel" placeholder="+992 90 000 00 00"></div>'+
-      '<div class="field"><label class="lbl">Email</label><input type="email" data-f="vemail" inputmode="email" placeholder="name@mail.com"></div>'+
-    '</div>'+
-
+      '<div class="field"><label class="lbl">Email</label><input type="text" data-f="vemail" inputmode="email" autocapitalize="off" spellcheck="false" placeholder="name@mail.com"></div>'+
+    '</div></div><div>'+
     '<div class="block"><div class="block-h"><h2>Интерес</h2></div>'+
       '<div class="field"><label class="lbl">Интересующие ЖК</label>'+
         '<div class="chips" data-g="vjk" data-multi="1" role="group">'+
@@ -1201,27 +1208,23 @@ function initVisits(root){
         '</div><p class="hint">Можно отметить несколько.</p></div>'+
       '<div class="field"><label class="lbl">Цель визита</label><input type="text" data-f="vgoal" list="visGoalsDL" placeholder="Выберите или впишите цель"></div>'+
       '<div class="field"><label class="lbl">Направление партнёрства</label><input type="text" data-f="vdir" list="visDirsDL" placeholder="Для партнёров"></div>'+
-    '</div>'+
-
+    '</div></div><div>'+
     '<div class="block"><div class="block-h"><h2>Организация</h2></div>'+
       '<div class="field"><label class="lbl">Агентство</label><input type="text" data-f="vagency" placeholder="Для брокеров"></div>'+
       '<div class="field"><label class="lbl">Компания</label><input type="text" data-f="vcompany" placeholder="Для партнёров"></div>'+
       '<div class="field"><label class="lbl">Язык анкеты</label>'+chipsHTML("vlang", ["RU","TJ"], "RU")+'</div>'+
     '</div>'+
-
     '<div class="block"><div class="block-h"><h2>Дата и время визита</h2></div>'+
       '<div class="row"><div><label class="lbl">Дата</label><input type="date" data-f="vdt"></div>'+
       '<div><label class="lbl">Время</label><input type="time" data-f="vtm"></div></div></div>'+
-
+    '</div></div>'+
     '<div class="actions"><div class="sum" data-f="vsum"></div>'+
       '<button class="btn btn-ghost" data-f="vclear" type="button">Очистить</button>'+
       '<button class="btn btn-main" data-f="save" type="button">Сохранить визит</button></div>'+
-
-  '</div><div class="listside">'+
-    '<div class="stats" data-f="stats"></div>'+
-    filterBarHTML("Имя, телефон, роль, ЖК, цель, направление…", expBtns())+
-    '<div class="tbl-wrap" data-f="tblw"></div>'+
-  '</div></div>'+
+  '</div>'+
+  filterBarHTML("Имя, телефон, роль, ЖК, цель, район, источник…", '<button type="button" class="btn btn-main btn-sm vadd" data-f="vadd">+ Добавить визит</button>'+expBtns())+
+  '<div class="stats" data-f="stats"></div>'+
+  '<div class="tbl-wrap" data-f="tblw"></div>'+
   '<datalist id="visGoalsDL"></datalist><datalist id="visDirsDL">'+VIS_DIRS.map(function(d){return '<option value="'+esc(d)+'">';}).join("")+'</datalist>';
 
   bindChips(root);
@@ -1282,10 +1285,13 @@ function initVisits(root){
     f(root,"vdt").value=ad.slice(0,10)||todayISO(); f(root,"vtm").value=ad.slice(11,16)||nowHM();
     f(root,"editwho").textContent="· "+(v.name||v.phone||"")+(v.upBy?" · правил "+v.upBy:"");
     f(root,"editbar").hidden=false; f(root,"save").textContent="Сохранить изменения";
-    summary();
-    root.querySelector(".formside").scrollIntoView({block:"start",behavior:"smooth"});
+    summary(); openForm();
   }
-  f(root,"cancelEdit").addEventListener("click", function(){ reset(); draw(); toast("Правка отменена"); });
+  function openForm(){ var fm=f(root,"vform"); fm.hidden=false; f(root,"vformTitle").textContent=editing?"Изменить визит":"Новый визит"; fm.scrollIntoView({block:"start",behavior:"smooth"}); }
+  function closeForm(){ f(root,"vform").hidden=true; }
+  f(root,"vadd").addEventListener("click", function(){ if(editing){ reset(); draw(); } openForm(); try{ f(root,"vname").focus({preventScroll:true}); }catch(x){} });
+  f(root,"vclose").addEventListener("click", function(){ var was=!!editing; reset(); closeForm(); if(was) draw(); });
+  f(root,"cancelEdit").addEventListener("click", function(){ reset(); closeForm(); draw(); toast("Правка отменена"); });
   f(root,"vclear").addEventListener("click", function(){ var was=!!editing; reset(); if(was) draw(); toast("Форма очищена"); });
 
   f(root,"save").addEventListener("click", function(){
@@ -1304,8 +1310,7 @@ function initVisits(root){
     sortRows();
     api("visit",{v:v}).then(function(j){ if(!(j&&j.ok)) toast("Не сохранилось на сервере — проверьте связь"); }).catch(function(){ toast("Нет связи с базой"); });
     toast(editing?("Визит изменён: "+(name||phone)):("Визит добавлен: "+(name||phone)));
-    reset(); draw();
-    root.querySelector(".formside").scrollIntoView({block:"start",behavior:"smooth"});
+    reset(); closeForm(); draw();
   });
 
   function delVisit(v){
@@ -1327,14 +1332,18 @@ function initVisits(root){
     });
   }
   function draw(){
-    var rr=pick(), byRole={};
-    rr.forEach(function(v){ var r=v.role||"—"; byRole[r]=(byRole[r]||0)+1; });
+    var rr=pick(), byRole={}, first=0, quiz=0, days={};
+    rr.forEach(function(v){ var r=v.role||"—"; byRole[r]=(byRole[r]||0)+1; if(/перв/i.test(v.mode||"")) first++; if(v.district||v.rooms||v.area||v.floor||v.source) quiz++; days[String(v.at||"").slice(0,10)]=1; });
+    var nd=Object.keys(days).length;
     f(root,"stats").innerHTML=
       '<div class="stat"><div class="n">'+rr.length+'</div><div class="t">визитов</div></div>'+
       '<div class="stat"><div class="n">'+(byRole["Покупатель"]||0)+'</div><div class="t">покупателей</div></div>'+
       '<div class="stat"><div class="n">'+(byRole["Клиент"]||0)+'</div><div class="t">клиентов</div></div>'+
       '<div class="stat"><div class="n">'+(byRole["Брокер"]||0)+'</div><div class="t">брокеров</div></div>'+
-      '<div class="stat"><div class="n">'+(byRole["Партнёр"]||0)+'</div><div class="t">партнёров</div></div>';
+      '<div class="stat"><div class="n">'+(byRole["Партнёр"]||0)+'</div><div class="t">партнёров</div></div>'+
+      '<div class="stat hot"><div class="n">'+first+'</div><div class="t">первых визитов</div></div>'+
+      '<div class="stat"><div class="n">'+quiz+'</div><div class="t">заполнили анкету</div></div>'+
+      '<div class="stat money"><div class="n">'+(nd?(rr.length/nd).toFixed(1).replace(".",",").replace(",0",""):"0")+'</div><div class="t">визитов в день</div></div>';
     flt.meta(rr.length, ROWS.length);
     var w=f(root,"tblw");
     if(!w.classList.contains("tbl-wrap")){ var nw=el('<div class="tbl-wrap" data-f="tblw"></div>'); w.parentNode.replaceChild(nw,w); w=nw; }
