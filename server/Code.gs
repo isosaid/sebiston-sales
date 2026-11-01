@@ -353,11 +353,12 @@ function doPost(e){
 function ping(){ Logger.log(SpreadsheetApp.getActive().getName()); }
 
 /* Лист «Визиты». Колонки 1–13 — визит (13 = ID, скрыта), 14–15 — кто правил на сайте,
-   16–20 — анкета покупателя с киоска. Порядок не менять: сайт читает по номерам колонок. */
+   16–20 — анкета покупателя с киоска, 21 — ID клиента, 22 — его менеджер (из вкладки «Офис»). Порядок не менять: сайт читает по номерам колонок. */
 var VISIT_HEAD = ['Дата/время','Роль','Режим','ФИО','Телефон','Email',
                   'Интересующие ЖК','Цель визита','Агентство','Компания','Направление','Язык','ID',
                   'Изменено','Кем',
-                  'Район','Тип квартиры','Площадь','Этаж','Откуда узнали'];
+                  'Район','Тип квартиры','Площадь','Этаж','Откуда узнали',
+                  'ID клиента','Менеджер клиента'];
 var VISIT_QUIZ = ['district','rooms','area','floor','source'];   // поля анкеты → колонки 16–20
 
 function visitsSheet_(){
@@ -382,6 +383,7 @@ function saveVisit_(v){
   v = v || {};
   if (!v.phone && !v.name) return { ok:false, err:'empty' };
   var lock = LockService.getScriptLock(); lock.waitLock(20000);
+  var cid = '', mgr = '', isNew = false;
   try {
     var sh = visitsSheet_();
     var id = String(v.id || ('visit-' + Date.now()));
@@ -395,14 +397,63 @@ function saveVisit_(v){
       for (var i = 0; i < ids.length; i++) { if (String(ids[i][0]) === id) { found = i + 2; break; } }
     }
     if (found) sh.getRange(found, 1, 1, row.length).setValues([row]);
-    else { sh.appendRow(row); found = sh.getLastRow(); }
+    else { sh.appendRow(row); found = sh.getLastRow(); isNew = true; }
     if (v.upAt || v.upBy) sh.getRange(found, 14, 1, 2).setValues([[ String(v.upAt||''), String(v.upBy||'') ]]);
     // анкета: пишем только если пришла (правка визита на сайте её не стирает)
     var hasQuiz = VISIT_QUIZ.some(function(k){ return Object.prototype.hasOwnProperty.call(v, k); });
     if (hasQuiz) sh.getRange(found, 16, 1, VISIT_QUIZ.length).setValues([VISIT_QUIZ.map(function(k){ return quizVal_(v[k]); })]);
+    cid = clientId_(v.phone, v.name, true);
+    var mg = findManager_(v.phone); mgr = mg ? mg.mgr : '';
+    if (cid || mgr) sh.getRange(found, 21, 1, 2).setValues([[cid, mgr]]);
     SpreadsheetApp.flush();
   } finally { lock.releaseLock(); }
-  return { ok:true, id:String(v.id || '') };
+  var notified = false;
+  // новый визит с киоска (не правка на сайте) и у клиента есть менеджер — пишем менеджеру в Telegram
+  if (isNew && !v.upBy && mgr) { try { notified = notifyManager_(mgr, v, cid); } catch (e) {} }
+  return { ok:true, id:String(v.id || ''), clientId: cid, manager: mgr, notified: notified };
+}
+
+/* ---------- ID клиента: один номер телефона = один ID (SB-10001, SB-10002 …) ---------- */
+function idsSheet_(){
+  var ss = SpreadsheetApp.getActive(), sh = ss.getSheetByName('ID клиентов');
+  if (!sh) {
+    sh = ss.insertSheet('ID клиентов');
+    sh.getRange(1, 1, 1, 4).setValues([['ID клиента','Телефон','ФИО','Создан']])
+      .setBackground('#0E6D23').setFontColor('#FFFFFF').setFontWeight('bold');
+    sh.setFrozenRows(1); sh.getRange('B:B').setNumberFormat('@');
+  }
+  return sh;
+}
+function clientId_(phone, name, create){
+  var ph = digitsOnly_(phone).slice(-9); if (ph.length < 9) return '';
+  var sh = idsSheet_(), last = sh.getLastRow();
+  if (last >= 2) {
+    var vals = sh.getRange(2, 1, last - 1, 2).getValues();
+    for (var i = 0; i < vals.length; i++) if (digitsOnly_(vals[i][1]).slice(-9) === ph) return String(vals[i][0]);
+  }
+  if (!create) return '';
+  var cid = 'SB-' + (10000 + Math.max(1, last));               // строка 2 → SB-10001
+  sh.appendRow([cid, '+992' + ph, String(name || ''), Utilities.formatDate(new Date(), 'Asia/Dushanbe', 'yyyy-MM-dd HH:mm')]);
+  return cid;
+}
+
+/* ---------- менеджер клиента: последняя запись с этим номером во вкладке «Офис», потом «Звонки» ---------- */
+function findManager_(phone){
+  var ph = digitsOnly_(phone).slice(-9); if (ph.length < 9) return null;
+  var ss = SpreadsheetApp.getActive(), res = null;
+  ['Офис', 'Звонки'].some(function(t){
+    var sh = ss.getSheetByName(t); if (!sh || sh.getLastRow() < 2) return false;
+    var vals = sh.getRange(2, sh.getLastColumn(), sh.getLastRow() - 1, 1).getValues();     // колонка «Данные» (JSON)
+    for (var i = vals.length - 1; i >= 0; i--) {
+      try { var o = JSON.parse(vals[i][0] || '{}'); } catch (e) { continue; }
+      if ([o.tel, o.wa, o.phone].some(function(x){ return digitsOnly_(x).slice(-9) === ph; }) && String(o.mgr || '').trim()) {
+        res = { mgr: String(o.mgr).trim(), name: String(o.fio || '').trim(), date: String(o.date || ''), tab: t };
+        return true;
+      }
+    }
+    return false;
+  });
+  return res;
 }
 
 
@@ -427,7 +478,8 @@ function listVisits_(){
              company:String(r[9]||''), dir:String(r[10]||''), lang:String(r[11]||''),
              id:String(r[12]||''), upAt:String(r[13]||''), upBy:String(r[14]||''),
              district:String(r[15]||''), rooms:String(r[16]||''), area:String(r[17]||''),
-             floor:String(r[18]||''), source:String(r[19]||'') };
+             floor:String(r[18]||''), source:String(r[19]||''),
+             cid:String(r[20]||''), cmgr:String(r[21]||'') };
   });
 }
 function delVisit_(id){
@@ -459,6 +511,30 @@ var OTP_TTL = 600;                                   // код живёт 10 м�
 
 function tgToken_(){ return PropertiesService.getScriptProperties().getProperty('TG_TOKEN') || ''; }
 function tgChats_(){ try{ return JSON.parse(PropertiesService.getScriptProperties().getProperty('TG_CHATS') || '{}'); }catch(e){ return {}; } }
+function tgMgrs_(){ try{ return JSON.parse(PropertiesService.getScriptProperties().getProperty('TG_MGRS') || '{}'); }catch(e){ return {}; } }
+function htmlEsc_(x){ return String(x == null ? '' : x).replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;'); }
+
+/* «Ваш клиент пришёл в офис» — в группу менеджеров (или лично менеджеру, если группы нет) */
+function notifyManager_(mgr, v, cid){
+  if(!tgToken_()) return false;
+  tgPoll_();
+  var props = PropertiesService.getScriptProperties(), group = props.getProperty('TG_GROUP');
+  var who = tgMgrs_()[String(mgr).toLowerCase()];
+  var tag = who ? (who.user ? '@' + who.user : '<a href="tg://user?id=' + who.id + '">' + htmlEsc_(mgr) + '</a>') : '<b>' + htmlEsc_(mgr) + '</b>';
+  var jk = Array.isArray(v.jk) ? v.jk.join(', ') : (v.jk || '');
+  var text = '🏢 <b>Ваш клиент пришёл в офис</b>\n\n' +
+    '👤 ' + htmlEsc_(v.name || '—') + '\n' +
+    '📞 ' + htmlEsc_(v.phone || '—') + '\n' +
+    (cid ? '🆔 ' + htmlEsc_(cid) + '\n' : '') +
+    (v.role ? '🏷 ' + htmlEsc_(v.role) + (v.mode ? ' · ' + htmlEsc_(v.mode) : '') + '\n' : '') +
+    (v.goal ? '🎯 ' + htmlEsc_(v.goal) + '\n' : '') +
+    (jk ? '🏠 ' + htmlEsc_(jk) + '\n' : '') +
+    '\nМенеджер: ' + tag + ' — встретьте, пожалуйста, клиента.';
+  var targets = group ? [group] : (who ? [String(who.id)] : Object.keys(tgChats_()));
+  var ok = false;
+  targets.forEach(function(id){ var r = tg_('sendMessage', { chat_id: Number(id), text: text, parse_mode: 'HTML', disable_web_page_preview: true }); ok = ok || !!(r && r.ok); });
+  return ok;
+}
 function tgSaveChats_(o){ PropertiesService.getScriptProperties().setProperty('TG_CHATS', JSON.stringify(o)); }
 function digitsOnly_(x){ return String(x == null ? '' : x).replace(/\D/g, ''); }
 
@@ -476,12 +552,30 @@ function tgPoll_(){
   var lock = LockService.getScriptLock(); if(!lock.tryLock(5000)) return;
   try{
     var off = +(props.getProperty('TG_OFFSET') || 0);
-    var res = tg_('getUpdates', { offset: off, timeout: 0, allowed_updates: ['message','callback_query'] });
+    var res = tg_('getUpdates', { offset: off, timeout: 0, allowed_updates: ['message','callback_query','my_chat_member'] });
     if(!res.ok || !res.result) return;
     var chats = tgChats_();
     res.result.forEach(function(u){
       off = Math.max(off, u.update_id + 1);
-      var m = u.message, cb = u.callback_query;
+      var m = u.message, cb = u.callback_query, mc = u.my_chat_member;
+      // бота добавили в группу — запоминаем её: сюда пойдут сообщения «ваш клиент пришёл»
+      if(mc && mc.chat && /group/.test(mc.chat.type) && /member|administrator/.test(mc.new_chat_member && mc.new_chat_member.status)){
+        props.setProperty('TG_GROUP', String(mc.chat.id));
+        tg_('sendMessage', { chat_id: mc.chat.id, text: '✅ Группа подключена к киоску Sebiston. Сюда будут приходить сообщения, когда клиент менеджера приходит в офис.\n\nКаждый менеджер — напишите здесь один раз: /manager ВашеИмя (как в программе продаж), чтобы бот отмечал вас.' });
+      }
+      if(m && m.chat && /group/.test(m.chat.type)){
+        var txt = String(m.text || '');
+        if(/^\/(group|start)(@\w+)?\s*$/.test(txt)){
+          props.setProperty('TG_GROUP', String(m.chat.id));
+          tg_('sendMessage', { chat_id: m.chat.id, text: '✅ Группа подключена. Менеджеры: /manager ВашеИмя' });
+        }
+        var mm = txt.match(/^\/manager(?:@\w+)?\s+(.+)$/);
+        if(mm){
+          var map = tgMgrs_(); map[mm[1].trim().toLowerCase()] = { id: m.from.id, user: m.from.username || '', name: mm[1].trim() };
+          props.setProperty('TG_MGRS', JSON.stringify(map));
+          tg_('sendMessage', { chat_id: m.chat.id, reply_to_message_id: m.message_id, text: '👍 Запомнил: ' + mm[1].trim() + ' — это вы. Буду отмечать вас, когда придёт ваш клиент.' });
+        }
+      }
       if(m && m.chat && m.chat.type === 'private'){
         if(m.contact){
           var ph = digitsOnly_(m.contact.phone_number), own = m.contact.user_id === m.from.id;
@@ -581,7 +675,9 @@ function otpRequest_(q){
 }
 
 function otpState_(req){ var raw = CacheService.getScriptCache().get('otp_' + String(req || '')); return raw ? JSON.parse(raw) : null; }
-function otpDone_(o){ var cl = findClient_(o.phone) || {}; return { ok:true, verified:true, name: cl.name || '', line: cl.line || '', by: o.by || '' }; }
+function otpDone_(o){ var cl = findClient_(o.phone) || {}, mg = findManager_(o.phone);
+  return { ok:true, verified:true, name: cl.name || (mg && mg.name) || '', line: cl.line || '', by: o.by || '',
+           manager: mg ? mg.mgr : '', clientId: clientId_(o.phone, '', false) }; }
 
 function otpStatus_(q){
   tgPoll_();
@@ -611,7 +707,10 @@ function menuTgStatus(){
   tgPoll_();
   var ch = tgChats_(), list = Object.keys(ch).map(function(k){ return '• ' + (ch[k].name || '') + ' +' + ch[k].phone; });
   var me = tg_('getMe', {});
+  var grp = PropertiesService.getScriptProperties().getProperty('TG_GROUP'), mg = tgMgrs_();
   SpreadsheetApp.getUi().alert('Бот: ' + (me.ok ? '@' + me.result.username : 'не подключён') +
+    '\n\nГруппа менеджеров: ' + (grp ? 'подключена' : 'нет (добавьте бота в группу и напишите там /group)') +
+    '\nМенеджеры в группе: ' + (Object.keys(mg).length ? Object.keys(mg).map(function(k){ return mg[k].name + (mg[k].user ? ' (@' + mg[k].user + ')' : ''); }).join(', ') : 'никто не написал /manager Имя') +
     '\n\nМенеджеры, которые подключились:\n' + (list.length ? list.join('\n') : '— пока никого (нужно /start и «Поделиться номером»)') +
     '\n\nРазрешённые номера: ' + TG_MANAGERS.map(function(x){ return '+' + x; }).join(', '));
 }
