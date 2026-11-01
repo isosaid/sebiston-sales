@@ -116,6 +116,10 @@ input[aria-invalid="true"]{border-color:var(--red);background:var(--red-soft)}
 #p-visits .vgrid{display:grid;grid-template-columns:repeat(auto-fit,minmax(300px,1fr));gap:0 32px}
 #p-visits .vform .actions{position:static;margin:4px -22px 0;padding:14px 22px;border-top:1px solid var(--line)}
 #p-visits .vadd{margin-left:auto}
+#p-visits .vsale{border-top:1px solid var(--line);padding-top:16px;margin-top:4px}
+#p-visits .vsale-row{display:grid;grid-template-columns:repeat(4,minmax(0,1fr));gap:12px;margin-bottom:12px}
+@media (max-width:700px){ #p-visits .vsale-row{grid-template-columns:repeat(2,minmax(0,1fr))} }
+#p-visits .vn.sl{background:#EFE8FC;color:#6A3FC0}
 #p-visits .cc{border-radius:18px;overflow:hidden;margin:0 0 14px;position:relative}
 #p-visits .cc:before{content:"";position:absolute;left:0;top:18px;width:4px;height:60px;border-radius:0 3px 3px 0;background:#3FD07A;z-index:1}
 #p-visits .cc-main{background:#0F4A2C;border:2px solid #0F4A2C}
@@ -1354,6 +1358,16 @@ function initVisits(root){
       '<div class="row"><div><label class="lbl">Дата</label><input type="date" data-f="vdt"></div>'+
       '<div><label class="lbl">Время</label><input type="time" data-f="vtm"></div></div></div>'+
     '</div></div>'+
+    '<div class="block vsale"><div class="block-h"><h2>Продажа на этом визите</h2><span class="note">если клиент купил или забронировал</span></div>'+
+      '<div class="field">'+chipsHTML("vsale", ["Нет","Бронь","Продажа"], "Нет")+'</div>'+
+      '<div class="vsale-f" data-f="vsaleF" hidden>'+
+        '<div class="field"><label class="lbl">Какой объект купил</label>'+chipsHTML("vsobj", VIS_JK, "")+'</div>'+
+        '<div class="field"><label class="lbl">Тип недвижимости</label>'+chipsHTML("vstype", ["Квартира","Торговое помещение","Парковка","Склад"], "Квартира")+'</div>'+
+        '<div class="vsale-row"><div><label class="lbl">Блок</label><input type="text" data-f="vsblock" placeholder="А"></div>'+
+          '<div><label class="lbl">Квартира №</label><input type="text" data-f="vsapt" placeholder="45"></div>'+
+          '<div><label class="lbl">Этаж</label><input type="number" data-f="vsfloor" min="0" inputmode="numeric"></div>'+
+          '<div><label class="lbl">Общая сумма, $</label><input type="number" data-f="vstotal" min="0" step="1" inputmode="numeric"></div></div>'+
+      '</div></div>'+
     '<div class="actions"><div class="sum" data-f="vsum"></div>'+
       '<button class="btn btn-ghost" data-f="vclear" type="button">Очистить</button>'+
       '<button class="btn btn-main" data-f="save" type="button">Сохранить визит</button></div>'+
@@ -1381,7 +1395,8 @@ function initVisits(root){
     var who=fv(root,"vname")||fv(root,"vphone");
     f(root,"vsum").textContent = who ? ((gv(root,"vrole")||"Покупатель")+" · "+who) : "Укажите ФИО или телефон";
   }
-  root.addEventListener("chipchange", function(ev){ if(ev.detail.group==="vrole") refreshGoals(); summary(); });
+  function saleUI(){ f(root,"vsaleF").hidden = !gv(root,"vsale") || gv(root,"vsale")==="Нет"; }
+  root.addEventListener("chipchange", function(ev){ if(ev.detail.group==="vrole") refreshGoals(); if(ev.detail.group==="vsale") saleUI(); summary(); });
   f(root,"vname").addEventListener("input", function(){ f(root,"e-vname").hidden=true; summary(); });
   f(root,"vphone").addEventListener("input", summary);
 
@@ -1390,7 +1405,8 @@ function initVisits(root){
       jk:(v.jk?String(v.jk).split(/,\s*/).filter(Boolean):[]), goal:v.goal, agency:v.agency,
       company:v.company, dir:v.dir, lang:v.lang, upAt:v.upAt||"", upBy:v.upBy||"",
       district:v.district||"", rooms:v.rooms||"", area:v.area||"", floor:v.floor||"", source:v.source||"",
-      cid:v.cid||"", cmgr:v.cmgr||"" };
+      cid:v.cid||"", cmgr:v.cmgr||"",
+      sale:v.sale||"", sobj:v.sobj||"", stype:v.stype||"", sblock:v.sblock||"", sapt:v.sapt||"", sfloor:v.sfloor||"", stotal:v.stotal||"" };
   }
   function normAt(a){
     if(!a) return "";
@@ -1408,6 +1424,7 @@ function initVisits(root){
   function reset(){
     ["vname","vphone","vemail","vgoal","vdir","vagency","vcompany"].forEach(function(n){ var e=f(root,n); if(e) e.value=""; });
     gset(root,"vrole","Покупатель"); gset(root,"vmode",""); gset(root,"vlang","RU");
+    gset(root,"vsale","Нет"); gset(root,"vsobj",""); gset(root,"vstype","Квартира"); ["vsblock","vsapt","vsfloor","vstotal"].forEach(function(n){ f(root,n).value=""; }); saleUI();
     Array.prototype.forEach.call(root.querySelectorAll('[data-g="vjk"] .chip'),function(c){c.setAttribute("aria-pressed","false");});
     f(root,"vdt").value=todayISO(); f(root,"vtm").value=nowHM();
     f(root,"e-vname").hidden=true;
@@ -1424,6 +1441,8 @@ function initVisits(root){
     f(root,"vgoal").value=v.goal||""; f(root,"vdir").value=v.dir||"";
     f(root,"vagency").value=v.agency||""; f(root,"vcompany").value=v.company||"";
     gset(root,"vlang",v.lang||"RU");
+    gset(root,"vsale",v.sale||"Нет"); gset(root,"vsobj",v.sobj||""); gset(root,"vstype",v.stype||"Квартира");
+    f(root,"vsblock").value=v.sblock||""; f(root,"vsapt").value=v.sapt||""; f(root,"vsfloor").value=v.sfloor||""; f(root,"vstotal").value=v.stotal||""; saleUI();
     var ad=String(v.at||"").replace("T"," ");
     f(root,"vdt").value=ad.slice(0,10)||todayISO(); f(root,"vtm").value=ad.slice(11,16)||nowHM();
     f(root,"editwho").textContent="· "+(v.name||v.phone||"")+(v.upBy?" · правил "+v.upBy:"");
@@ -1445,6 +1464,9 @@ function initVisits(root){
     var v={ id: editing||uid(), at:at, role:gv(root,"vrole")||"Покупатель", mode:gv(root,"vmode"),
       name:name, phone:phone, email:fv(root,"vemail"), jk:jk, goal:fv(root,"vgoal"),
       agency:fv(root,"vagency"), company:fv(root,"vcompany"), dir:fv(root,"vdir"), lang:gv(root,"vlang")||"RU" };
+    var sl=gv(root,"vsale"); sl = sl==="Нет" ? "" : sl;
+    v.sale=sl; v.sobj=sl?gv(root,"vsobj"):""; v.stype=sl?(gv(root,"vstype")||"Квартира"):""; v.sblock=sl?fv(root,"vsblock"):""; v.sapt=sl?fv(root,"vsapt"):"";
+    v.sfloor=sl?fv(root,"vsfloor"):""; v.stotal=sl?(num(fv(root,"vstotal"))||""):"";
     if(editing){ v.upAt=new Date().toISOString(); v.upBy=authName(); }
     var prev=ROWS.find(function(x){return x.id===v.id;})||{};   /* анкету с киоска при правке не теряем */
     var row=Object.assign({ district:prev.district||"", rooms:prev.rooms||"", area:prev.area||"", floor:prev.floor||"", source:prev.source||"", cid:prev.cid||"", cmgr:prev.cmgr||"" }, v, { jk: jk.join(", ") });
@@ -1476,6 +1498,14 @@ function initVisits(root){
       var inName=(String(d.buyer||"").match(/\d[\d\s()+-]{7,}\d/)||[""])[0].replace(/\D/g,"").slice(-9); if(inName.length===9 && ph[inName]) return true;
       return !!cid && (String(d.buyer||"")+" "+String(d.note||"")).toUpperCase().indexOf(cid)>=0;
     }).sort(function(a,b){ return String(a.date||"").localeCompare(String(b.date||"")); });
+  }
+  function saleLine(v){ return [v.sobj, v.stype, v.sblock?"блок "+v.sblock:"", v.sapt?"кв. "+v.sapt:"", v.sfloor?v.sfloor+" этаж":""].filter(Boolean).join(" · "); }
+  /* все покупки клиента: отмеченные на визитах + сделки из «Продаж» (без дублей) */
+  function salesOf(H){
+    var L=H.filter(function(v){ return v.sale && !v._off; }).map(function(v){ return { _visit:true, date:String(v.at||"").slice(0,10), status:v.sale, object:v.sobj, ptype:v.stype||"Квартира",
+      block:v.sblock, apt:v.sapt, floor:v.sfloor, total:v.stotal, mgr:v.cmgr||v.upBy||"" }; });
+    dealsOf(H).forEach(function(d){ if(!L.some(function(x){ return x.object===d.object && String(x.block||"")===String(d.block||"") && String(x.floor||"")===String(d.floor||"") && Math.round(num(x.total))===Math.round(num(d.total)); })) L.push(d); });
+    return L.sort(function(a,b){ return String(a.date||"").localeCompare(String(b.date||"")); });
   }
   function dealLine(d){ return [d.object, d.ptype||"Квартира", d.block?"блок "+d.block:"", d.apt?"кв. "+d.apt:"", d.floor?d.floor+" этаж":"", d.area?String(d.area).replace(".",",")+" м²":""].filter(Boolean).join(" · "); }
   /* приходы в офис, записанные менеджерами во вкладке «Офис», тоже считаются визитами клиента */
@@ -1547,7 +1577,7 @@ function initVisits(root){
     if(GROUP==="mgr") cols.sort(function(a,b){ return (a.key==="—")-(b.key==="—") || b.items.length-a.items.length; });
     function plural(n,a,b,c){ var m=n%10,h=n%100; return n+" "+(m===1&&h!==11?a:(m>=2&&m<=4&&(h<10||h>=20)?b:c)); }
     function card(c){
-      var dl=dealsOf(c.H), dsum=dl.reduce(function(a,d){ return a+num(d.total); },0), sold=dl.some(function(d){ return d.status!=="Бронь"; });
+      var dl=salesOf(c.H), dsum=dl.reduce(function(a,d){ return a+num(d.total); },0), sold=dl.some(function(d){ return d.status!=="Бронь"; });
       var h=heatOf(c.n), L=c.last, st=c.off&&c.off.stage, pill= dl.length ? '<span class="pill p-violet">'+(sold?'Купил(а)':'Бронь')+'</span>' : st?'<span class="pill p-'+(STAGE_C[st]||"gray")+'">'+esc(st)+'</span>':'<span class="pill p-'+(ROLE_C[L.role]||"gray")+'">'+esc(L.mode||L.role||"Визит")+'</span>';
       var desc=c.goals.length?c.goals.slice(0,2).join(" · ")+(c.goals.length>2?" · ещё "+(c.goals.length-2):""):"Цель визита не указана";
       if(c.jk.length) desc+=" — "+c.jk.join(", ");
@@ -1612,7 +1642,7 @@ function initVisits(root){
       H.forEach(function(v){ if(v.goal) goals[v.goal]=(goals[v.goal]||0)+1; String(v.jk||"").split(/,\s*/).filter(Boolean).forEach(function(j){ jks[j]=(jks[j]||0)+1; }); });
       var cnt=function(o){ return Object.keys(o).sort(function(a,b){return o[b]-o[a];}).map(function(k){ return esc(k)+(o[k]>1?' <b>×'+o[k]+'</b>':''); }).join(", "); };
       var off=officeMap()[String(last.phone||"").replace(/\D/g,"").slice(-9)]||null, hh=heatOf(H.length);
-      var DL=dealsOf(H), sold=DL.filter(function(d){ return d.status!=="Бронь"; }), sumAll=DL.reduce(function(a,d){ return a+num(d.total); },0);
+      var DL=salesOf(H), sold=DL.filter(function(d){ return d.status!=="Бронь"; }), sumAll=DL.reduce(function(a,d){ return a+num(d.total); },0);
       var fld=function(l,v){ return '<div class="cc-f"><span>'+l+'</span><div>'+(v||'<i>—</i>')+'</div></div>'; };
       var tel=String(last.phone||"").replace(/[^0-9+]/g,"");
       var IDI='<svg viewBox="0 0 20 20"><rect x="2.5" y="4.5" width="15" height="11" rx="2"/><path d="M6 8v4M9 8h1.5a2 2 0 0 1 0 4H9z"/></svg>';
@@ -1642,15 +1672,15 @@ function initVisits(root){
         (DL.length?'<div class="cc-tl-h">Покупки клиента · '+DL.length+' на '+esc(money(sumAll))+'</div>'+DL.slice().reverse().map(function(d){
           return '<section class="cc cc-v cc-deal"><header class="cc-h"><div class="cc-av sm">'+(d.status==="Бронь"?"Б":"$")+'</div><div class="cc-hd">'+
               '<div class="cc-name sm">'+esc(d.status==="Бронь"?"Бронь:":"Купил(а)")+' '+esc(({"Квартира":"квартиру","Парковка":"парковку"})[d.ptype||"Квартира"]||String(d.ptype).toLowerCase())+' <em>'+esc(dLong(d.date))+'</em><span class="cc-badge lt vi">'+esc(d.object||"")+'</span></div>'+
-              '<div class="cc-sub"><span>Менеджер: '+esc(d.mgr||"—")+'</span>'+(d.method?'<span>'+esc(d.method)+'</span>':'')+(d.term?'<span>срок: '+esc(d.term)+'</span>':'')+'</div></div>'+
+              '<div class="cc-sub"><span>'+(d._visit?'Отмечено на визите':'Из вкладки «Продажи»')+'</span><span>Менеджер: '+esc(d.mgr||"—")+'</span>'+(d.method?'<span>'+esc(d.method)+'</span>':'')+(d.term?'<span>срок: '+esc(d.term)+'</span>':'')+'</div></div>'+
               '<div class="cc-sum"><b>'+esc(money(num(d.total)))+'</b>общая сумма</div></header>'+
             '<div class="cc-b">'+
               fld("Объект", '<b>'+esc(d.object||"")+'</b>')+
               fld("Тип недвижимости", esc(d.ptype||"Квартира"))+
               fld("Блок · квартира · этаж", [d.block?"блок "+esc(d.block):"", d.apt?"кв. "+esc(d.apt):"", d.floor?esc(d.floor)+" этаж":""].filter(Boolean).join(" · "))+
-              fld("Площадь · цена за м²", (d.area?esc(String(d.area).replace(".",","))+" м²":"")+(d.price&&d.area?" · "+esc(money(Math.round(num(d.price)))):""))+
+              (d._visit?'':fld("Площадь · цена за м²", (d.area?esc(String(d.area).replace(".",","))+" м²":"")+(d.price&&d.area?" · "+esc(money(Math.round(num(d.price)))):""))+
               fld("Внесено · остаток", esc(money(num(d.paid)))+" · "+esc(money(num(d.total)-num(d.paid))))+
-              fld("Примечание", esc(d.note||""))+
+              fld("Примечание", esc(d.note||"")))+
             '</div></section>'; }).join(""):'')+
         '<div class="cc-tl-h">Что было на каждом визите</div>'+
         H.slice().reverse().map(function(v){
@@ -1670,6 +1700,7 @@ function initVisits(root){
               fld(v.role==="Брокер"?"Агентство":(v.role==="Партнёр"?"Компания · направление":"Анкета: район · тип · площадь · этаж"),
                   v.role==="Брокер"?esc(v.agency||""):(v.role==="Партнёр"?[v.company,v.dir].filter(Boolean).map(esc).join(" · "):quiz(v))) +
               offF+noteF+
+              (v.sale?fld(v.sale==="Бронь"?"Бронь на этом визите":"Продажа на этом визите", '<b>'+esc(saleLine(v))+'</b>'+(v.stotal?' · '+esc(money(num(v.stotal))):'')):'')+
             '</div></section>';
         }).join("")+
         (cq?'<span class="cid-note">поиск по ID — за всё время</span>':'');
@@ -1683,11 +1714,11 @@ function initVisits(root){
     if(cards){ drawBoard(bd, rr); return; }
     if(loading && !loaded){ w.innerHTML='<div class="empty" style="border:0"><b>Загружаю визиты…</b></div>'; return; }
     if(!rr.length){ w.innerHTML='<div class="empty" style="border:0"><b>Визитов нет</b>'+(loaded?(ROWS.length?'Измените период или запрос.':'Добавьте визит слева или зарегистрируйте на киоске /visit/.'):'Пока ни одного визита.')+'</div>'; return; }
-    w.innerHTML='<table><thead><tr><th>Дата/время</th><th>ID клиента</th><th>Визит</th><th>Роль</th><th>Режим</th><th>ФИО</th><th>Менеджер</th><th>Телефон</th><th>Email</th>'+
+    w.innerHTML='<table><thead><tr><th>Дата/время</th><th>ID клиента</th><th>Визит</th><th>Роль</th><th>Режим</th><th>ФИО</th><th>Менеджер</th><th>Продажа</th><th>Телефон</th><th>Email</th>'+
       '<th>Интересующие ЖК</th><th>Цель визита</th><th>Район</th><th>Тип квартиры</th><th>Площадь</th><th>Этаж</th><th>Откуда узнали</th><th>Агентство</th><th>Компания</th><th>Направление</th><th>Язык</th><th></th></tr></thead><tbody>'+
       rr.map(function(v){
         return '<tr'+(v.id===editing?' class="editing"':'')+'><td style="white-space:nowrap">'+esc(v.at)+vUpd(v)+'</td><td style="white-space:nowrap;font-weight:600">'+(v.cid?'<button type="button" class="lnk cidlnk" data-cid="'+esc(v.cid)+'" title="Все визиты клиента">'+esc(v.cid)+'</button>':'—')+'</td><td style="white-space:nowrap">'+nBadge(v)+(v._tot>1?' <span class="vt">из '+v._tot+'</span>':'')+'</td><td>'+esc(v.role)+'</td><td>'+esc(v.mode||"—")+'</td>'+
-        '<td>'+esc(v.name||"—")+'</td><td>'+esc(v.cmgr||"—")+'</td><td style="white-space:nowrap"><a href="tel:'+esc(String(v.phone||"").replace(/[^0-9+]/g,""))+'">'+esc(v.phone||"—")+'</a></td>'+
+        '<td>'+esc(v.name||"—")+'</td><td>'+esc(v.cmgr||"—")+'</td><td class="wrap" style="min-width:230px">'+(v.sale?'<span class="vn sl">'+esc(v.sale)+'</span> '+esc(saleLine(v))+(v.stotal?' · <b>'+esc(money(num(v.stotal)))+'</b>':''):"—")+'</td><td style="white-space:nowrap"><a href="tel:'+esc(String(v.phone||"").replace(/[^0-9+]/g,""))+'">'+esc(v.phone||"—")+'</a></td>'+
         '<td class="wrap">'+esc(v.email||"—")+'</td><td class="wrap">'+esc(v.jk||"—")+'</td><td class="wrap">'+esc(v.goal||"—")+'</td>'+
         '<td class="wrap">'+esc(v.district||"—")+'</td><td class="wrap">'+esc(v.rooms||"—")+'</td><td class="wrap">'+esc(v.area||"—")+'</td><td class="wrap">'+esc(v.floor||"—")+'</td><td class="wrap">'+esc(v.source||"—")+'</td>'+
         '<td>'+esc(v.agency||"—")+'</td><td>'+esc(v.company||"—")+'</td><td class="wrap">'+esc(v.dir||"—")+'</td><td>'+esc(v.lang||"—")+'</td>'+
@@ -1716,10 +1747,10 @@ function initVisits(root){
     var g=flt.get();
     var meta=[["Период",periodLabel(g.from,g.to)],["Всего визитов",rr.length]]; if(g.q.trim()) meta.push(["Поиск",g.q.trim()]);
     var cols=[{h:"Дата/время",w:16},{h:"ID клиента",w:11},{h:"Визит №",w:8,t:"n"},{h:"Роль",w:12},{h:"Режим",w:16},{h:"ФИО",w:20},{h:"Менеджер",w:14},{h:"Телефон",w:15},{h:"Email",w:20},
-      {h:"Интересующие ЖК",w:30},{h:"Цель визита",w:22},{h:"Район",w:16},{h:"Тип квартиры",w:20},{h:"Площадь",w:14},{h:"Этаж",w:14},{h:"Откуда узнали",w:26},
+      {h:"Интересующие ЖК",w:30},{h:"Цель визита",w:22},{h:"Продажа",w:10},{h:"Объект продажи",w:18},{h:"Тип недвижимости",w:14},{h:"Блок",w:6},{h:"Кв. №",w:6},{h:"Этаж",w:6},{h:"Сумма, $",w:12,t:"m"},{h:"Район",w:16},{h:"Тип квартиры",w:20},{h:"Площадь",w:14},{h:"Этаж",w:14},{h:"Откуда узнали",w:26},
       {h:"Агентство",w:15},{h:"Компания",w:15},{h:"Направление",w:16},{h:"Язык",w:7}];
     numberVisits();
-    var rows=rr.map(function(v){ return [v.at,v.cid||"",v._n||1,v.role,v.mode,v.name,v.cmgr||"",v.phone,v.email,v.jk,v.goal,v.district||"",v.rooms||"",v.area||"",v.floor||"",v.source||"",v.agency,v.company,v.dir,v.lang]; });
+    var rows=rr.map(function(v){ return [v.at,v.cid||"",v._n||1,v.role,v.mode,v.name,v.cmgr||"",v.phone,v.email,v.jk,v.goal,v.sale||"",v.sobj||"",v.stype||"",v.sblock||"",v.sapt||"",v.sfloor||"",v.stotal?num(v.stotal):"",v.district||"",v.rooms||"",v.area||"",v.floor||"",v.source||"",v.agency,v.company,v.dir,v.lang]; });
     return { title:"Визиты в офис", file:"Sebiston — Визиты — "+periodLabel(g.from,g.to), meta:meta, signLeft:"Составил",
       kpis:[["всего визитов",rr.length]],
       tables:[{sheet:"Визиты",heading:"Визиты в офис",cols:cols,rows:rows}] };
@@ -2114,7 +2145,6 @@ function initSales(root){
       '<div class="field"><label class="lbl">Этаж</label><input type="number" data-f="floor" min="0" inputmode="numeric"></div>'+
       '<div class="field"><label class="lbl">Площадь, м² <span class="req">•</span></label><input type="number" data-f="area" min="0" step="0.01" inputmode="decimal"></div></div>'+
       '<div class="field"><label class="lbl">Тип помещения</label>'+chipsHTML("ptype", PTYPES, "Квартира")+'</div>'+
-      '<div class="field"><label class="lbl">№ квартиры / помещения</label><input type="text" data-f="apt" placeholder="например, 45"></div>'+
     '</div>'+
     '<div class="block"><div class="block-h"><h2>Оплата</h2></div>'+
       '<div class="field"><label class="lbl">Метод покупки</label>'+chipsHTML("method", METHODS, "")+'</div>'+
@@ -2128,7 +2158,6 @@ function initSales(root){
     '</div>'+
     '<div class="block"><div class="block-h"><h2>Покупатель и статус</h2></div>'+
       '<div class="field"><label class="lbl">ФИО покупателя</label><input type="text" data-f="buyer"></div>'+
-      '<div class="field"><label class="lbl">Телефон покупателя</label><input type="tel" data-f="btel" inputmode="tel" placeholder="+992 90 000 00 00"><p class="hint">По телефону покупка появится в карточке клиента во вкладке «Визиты».</p></div>'+
       '<div class="field"><label class="lbl">Статус</label>'+chipsHTML("status", ["Бронь","Продажа"], "Продажа")+'</div>'+
       '<div class="field"><label class="lbl">Примечание</label><textarea data-f="note" placeholder="Например: остаток внесёт до конца месяца"></textarea></div>'+
     '</div>'+
@@ -2172,7 +2201,7 @@ function initSales(root){
   root.addEventListener("chipchange", function(ev){ if(ev.detail&&ev.detail.group==="ptype") applyType(); summary(); });
 
   function reset(keep){
-    ["block","apt","floor","area","price","total","paid","term","buyer","btel","note"].forEach(function(n){ f(root,n).value=""; });
+    ["block","floor","area","price","total","paid","term","buyer","note"].forEach(function(n){ f(root,n).value=""; });
     gset(root,"obj",""); gset(root,"method",""); gset(root,"status","Продажа"); gset(root,"ptype","Квартира"); applyType();
     f(root,"dt").value=todayISO(); mon.reset();
     editing=null; f(root,"editbar").hidden=true; f(root,"save").textContent="Записать сделку";
@@ -2180,7 +2209,7 @@ function initSales(root){
   }
   function load(d){
     reset(d.mgr); editing=d.id;
-    gset(root,"obj",d.object||""); f(root,"block").value=d.block||""; f(root,"floor").value=d.floor||""; f(root,"apt").value=d.apt||""; f(root,"btel").value=d.tel||"";
+    gset(root,"obj",d.object||""); f(root,"block").value=d.block||""; f(root,"floor").value=d.floor||"";
     f(root,"area").value=d.area||""; f(root,"price").value=d.price?Math.round(d.price*100)/100:"";
     f(root,"total").value=d.total||""; f(root,"paid").value=d.paid||""; f(root,"term").value=d.term||"";
     gset(root,"method",d.method||""); f(root,"buyer").value=d.buyer||""; gset(root,"status",d.status||"Продажа");
@@ -2204,7 +2233,7 @@ function initSales(root){
     else f(root,"e-num").hidden=true;
     if(!ok){ if(first) first.scrollIntoView({block:"center",behavior:"smooth"}); toast("Не хватает данных"); return; }
     var a=num(fv(root,"area")), t=num(fv(root,"total")), pd=num(fv(root,"paid"));
-    var rec={ date:f(root,"dt").value, buyer:fv(root,"buyer"), tel:fv(root,"btel"), apt:fv(root,"apt"),
+    var rec={ date:f(root,"dt").value, buyer:fv(root,"buyer"),
       object:gv(root,"obj"), ptype:gv(root,"ptype")||"Квартира", block:fv(root,"block"), floor:fv(root,"floor"),
       area:a, price:num(fv(root,"price")) || (a? t/a : 0), total:t, paid:pd, rest:t-pd,
       method:gv(root,"method"), term:fv(root,"term"), status:gv(root,"status")||"Продажа",
@@ -2231,10 +2260,10 @@ function initSales(root){
     if(m) meta.push(["Менеджер",m]); if(ob) meta.push(["Объект",ob]); if(st) meta.push(["Статус",st]); if(g.q.trim()) meta.push(["Поиск",g.q.trim()]);
     function S2(k){ return rows.reduce(function(s,d){return s+num(d[k]);},0); }
     var tot=S2("total"), paid=S2("paid"), m2=S2("area");
-    var cols=[{h:"№",w:5,t:"n",al:"center"},{h:"Дата",w:11,t:"d"},{h:"Менеджер",w:13},{h:"Покупатель",w:22},{h:"Телефон",w:15},{h:"Объект",w:18},{h:"Тип помещения",w:18},{h:"Блок",w:7,al:"center"},{h:"№ кв.",w:7,al:"center"},
+    var cols=[{h:"№",w:5,t:"n",al:"center"},{h:"Дата",w:11,t:"d"},{h:"Менеджер",w:13},{h:"Покупатель",w:22},{h:"Объект",w:18},{h:"Тип помещения",w:18},{h:"Блок",w:7,al:"center"},
       {h:"Этаж",w:7,t:"n",al:"center"},{h:"Площадь, м²",w:11,t:"a"},{h:"Цена за м², $",w:12,t:"m"},{h:"Общая сумма, $",w:15,t:"m"},
       {h:"Внесено, $",w:14,t:"m"},{h:"Остаток, $",w:14,t:"m"},{h:"Метод покупки",w:14},{h:"Срок",w:13},{h:"Статус",w:10,al:"center"},{h:"Примечание",w:24,word:false}];
-    var body=rows.map(function(d,i){ return [i+1,d.date,d.mgr,d.buyer,d.tel||"",d.object,d.ptype||"Квартира",d.block,d.apt||"",d.floor,num(d.area),Math.round(num(d.price)),num(d.total),num(d.paid),num(d.total)-num(d.paid),d.method,d.term,d.status,d.note]; });
+    var body=rows.map(function(d,i){ return [i+1,d.date,d.mgr,d.buyer,d.object,d.ptype||"Квартира",d.block,d.floor,num(d.area),Math.round(num(d.price)),num(d.total),num(d.paid),num(d.total)-num(d.paid),d.method,d.term,d.status,d.note]; });
     var by={}; rows.forEach(function(d){ var k=d.mgr||"—"; var o=by[k]||(by[k]={n:0,b:0,s:0,a:0,t:0,p:0}); o.n++; if(d.status==="Бронь") o.b++; else o.s++; o.a+=num(d.area); o.t+=num(d.total); o.p+=num(d.paid); });
     var mk=Object.keys(by).sort(function(a,b){return by[b].t-by[a].t;});
     var mcols=[{h:"Менеджер",w:18},{h:"Сделок",w:9,t:"n",al:"center"},{h:"Броней",w:9,t:"n",al:"center"},{h:"Продаж",w:9,t:"n",al:"center"},
@@ -2243,7 +2272,7 @@ function initSales(root){
     return { title:"Реестр продаж", file:"Sebiston — Реестр продаж — "+periodLabel(g.from,g.to), meta:meta,
       kpis:[["сделок",rows.length],["продано, м²",fmtCell(m2,"a")],["общая сумма",fmtCell(tot,"m")],["внесено",fmtCell(paid,"m")],["остаток",fmtCell(tot-paid,"m")]],
       tables:[
-        {sheet:"Сделки",heading:"Сделки",cols:cols,rows:body,total:["","","","Итого: "+rows.length,"","","","","","",m2,"",tot,paid,tot-paid,"","","",""]},
+        {sheet:"Сделки",heading:"Сделки",cols:cols,rows:body,total:["","","","Итого: "+rows.length,"","","","",m2,"",tot,paid,tot-paid,"","","",""]},
         {sheet:"Итог по менеджерам",heading:"Итог по менеджерам",cols:mcols,rows:mrows,total:["Итого",rows.length,mrows.reduce(function(s,r){return s+r[2];},0),mrows.reduce(function(s,r){return s+r[3];},0),m2,tot,paid,tot-paid,tot?1:0]}
       ] };
   });
@@ -2265,7 +2294,7 @@ function initSales(root){
       '<th class="num">м²</th><th class="num">$/м²</th><th class="num">Сумма</th><th class="num">Внесено</th><th class="num">Остаток</th>'+
       '<th>Метод</th><th>Статус</th><th>Менеджер</th><th></th></tr></thead><tbody>'+
       rows.map(function(d){
-        return '<tr'+(d.id===editing?' class="editing"':'')+'><td>'+esc(fmtDate(d.date))+updNote(d)+'</td><td>'+esc(d.buyer||"—")+(d.tel?'<span class="upd">'+esc(d.tel)+'</span>':'')+'</td><td>'+esc(d.object)+'</td><td>'+esc(d.ptype||"Квартира")+'</td><td>'+esc(d.block||"—")+(d.apt?'<span class="upd">кв. '+esc(d.apt)+'</span>':'')+'</td>'+
+        return '<tr'+(d.id===editing?' class="editing"':'')+'><td>'+esc(fmtDate(d.date))+updNote(d)+'</td><td>'+esc(d.buyer||"—")+'</td><td>'+esc(d.object)+'</td><td>'+esc(d.ptype||"Квартира")+'</td><td>'+esc(d.block||"—")+'</td>'+
         '<td class="num">'+esc(d.floor||"—")+'</td><td class="num">'+(d.area?d.area.toLocaleString("ru-RU"):"—")+'</td>'+
         '<td class="num">'+(d.area?Math.round(d.price).toLocaleString("ru-RU"):"—")+'</td><td class="num">'+money(d.total)+'</td>'+
         '<td class="num">'+money(d.paid)+'</td><td class="num">'+money(d.rest)+'</td>'+
