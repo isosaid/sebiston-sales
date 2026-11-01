@@ -726,7 +726,7 @@ function bump(){ clearTimeout(idle); idle=setTimeout(()=>{ if($("#form").classLi
 
 /* attract mode (киоск): если форма пустая и экран не трогают ATTRACT_AFTER секунд — играет строительный ролик;
    the first touch only wakes the screen. Replace attract.mp4 with your own video any time. */
-const ATTRACT_AFTER=15;
+const ATTRACT_AFTER=600;   // заставка через 10 минут без касаний
 const av=$("#attractVideo"), ao=$("#attract");
 let aT=null, aBroken=false;
 av.addEventListener("error",()=>{aBroken=true;},true);
