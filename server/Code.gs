@@ -414,10 +414,12 @@ function saveVisit_(v){
     if (cid || mgr) sh.getRange(found, 21, 1, 2).setValues([[cid, mgr]]);
     SpreadsheetApp.flush();
   } finally { lock.releaseLock(); }
-  var notified = false;
+  var notified = false, hist = [];
+  try { hist = visitHistory_(v.phone); } catch (e) {}
+  var visitNo = hist.length || 1;
   // новый визит с киоска (не правка на сайте) и у клиента есть менеджер — пишем менеджеру в Telegram
-  if (isNew && !v.upBy && mgr) { try { notified = notifyManager_(mgr, v, cid, assigned, origin); } catch (e) {} }
-  return { ok:true, id:String(v.id || ''), clientId: cid, manager: mgr, assigned: assigned, notified: notified };
+  if (isNew && !v.upBy && mgr) { try { notified = notifyManager_(mgr, v, cid, assigned, origin, hist, mg); } catch (e) {} }
+  return { ok:true, id:String(v.id || ''), clientId: cid, manager: mgr, assigned: assigned, notified: notified, visitNo: visitNo };
 }
 
 /* ---------- ID клиента: один номер телефона = один ID (SB-10001, SB-10002 …) ---------- */
@@ -456,6 +458,11 @@ function assignedMgr_(phone, assign){
   return m;
 }
 /* строка «чей клиент» для сообщения с кодом: менеджер из базы, закреплённый, или кто будет назначен следующим */
+function visitsLine_(phone){
+  var h = visitHistory_(phone); if (!h.length) return '';
+  var l = h[h.length - 1];
+  return '📊 Уже был(а) в офисе: ' + h.length + ' раз(а), последний — ' + dmy_(l.at) + (l.goal ? ' (' + l.goal + ')' : '') + '\n';
+}
 function ownerLine_(phone){
   var at = function(m){ var w = tgMgrs_()[String(m).toLowerCase()]; return m + (w && w.user ? ' (@' + w.user + ')' : ''); };
   var mg = findManager_(phone); if (mg) return '👔 Клиент менеджера: ' + at(mg.mgr) + ' — из базы, вкладка «' + mg.tab + '»\n';
@@ -482,6 +489,32 @@ function clientId_(phone, name, create){
   return cid;
 }
 
+/* ---------- история визитов клиента по номеру: сколько раз был и с какими вопросами ---------- */
+function visitHistory_(phone){
+  var ph = digitsOnly_(phone).slice(-9); if (ph.length < 9) return [];
+  var sh = SpreadsheetApp.getActive().getSheetByName('Визиты'); if (!sh || sh.getLastRow() < 2) return [];
+  var vals = sh.getRange(2, 1, sh.getLastRow() - 1, 13).getValues(), out = [];
+  vals.forEach(function(r){
+    if (digitsOnly_(r[4]).slice(-9) !== ph) return;
+    var at = r[0] instanceof Date ? Utilities.formatDate(r[0], 'Asia/Dushanbe', 'yyyy-MM-dd HH:mm') : String(r[0] || '').replace('T', ' ').slice(0, 16);
+    out.push({ at: at, role: String(r[1] || ''), goal: String(r[7] || ''), jk: String(r[6] || ''), id: String(r[12] || '') });
+  });
+  out.sort(function(a, b){ return a.at < b.at ? -1 : a.at > b.at ? 1 : 0; });
+  return out;
+}
+function dmy_(at){ var m = String(at || '').match(/^(\d{4})-(\d{2})-(\d{2})/); return m ? m[3] + '.' + m[2] + '.' + m[1].slice(2) : String(at || ''); }
+/* сводка для Telegram: «Визит №3 · ранее: 20.10 — …» */
+function historyText_(hist, curId){
+  var prev = hist.filter(function(h){ return h.id !== curId; });
+  if (!prev.length) return '📊 <b>Первый визит</b>\n';
+  var goals = {}; prev.forEach(function(h){ if (h.goal) goals[h.goal] = (goals[h.goal] || 0) + 1; });
+  var g = Object.keys(goals).sort(function(a, b){ return goals[b] - goals[a]; }).map(function(k){ return htmlEsc_(k) + (goals[k] > 1 ? ' ×' + goals[k] : ''); });
+  var last = prev.slice(-4).reverse().map(function(h){ return '   • ' + dmy_(h.at) + ' — ' + htmlEsc_(h.goal || h.role || 'визит') + (h.jk ? ' (' + htmlEsc_(h.jk) + ')' : ''); });
+  return '📊 <b>Визит №' + (prev.length + 1) + '</b> · был(а) уже ' + prev.length + ' раз(а)\n' +
+         (g.length ? '❓ Вопросы раньше: ' + g.join(', ') + '\n' : '') +
+         '🗓 Последние визиты:\n' + last.join('\n') + (prev.length > 4 ? '\n   … ещё ' + (prev.length - 4) : '') + '\n';
+}
+
 /* ---------- менеджер клиента: последняя запись с этим номером во вкладке «Офис», потом «Звонки» ---------- */
 function findManager_(phone){
   var ph = digitsOnly_(phone).slice(-9); if (ph.length < 9) return null;
@@ -492,7 +525,8 @@ function findManager_(phone){
     for (var i = vals.length - 1; i >= 0; i--) {
       try { var o = JSON.parse(vals[i][0] || '{}'); } catch (e) { continue; }
       if ([o.tel, o.wa, o.phone].some(function(x){ return digitsOnly_(x).slice(-9) === ph; }) && String(o.mgr || '').trim()) {
-        res = { mgr: String(o.mgr).trim(), name: String(o.fio || '').trim(), date: String(o.date || ''), tab: t };
+        res = { mgr: String(o.mgr).trim(), name: String(o.fio || '').trim(), date: String(o.date || ''), tab: t,
+                topic: String(o.topic || ''), stage: String(o.stage || ''), decision: String(o.decision || ''), note: String(o.note || '') };
         return true;
       }
     }
@@ -560,7 +594,7 @@ function tgMgrs_(){ try{ return JSON.parse(PropertiesService.getScriptProperties
 function htmlEsc_(x){ return String(x == null ? '' : x).replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;'); }
 
 /* «Ваш клиент пришёл в офис» — в группу менеджеров (или лично менеджеру, если группы нет) */
-function notifyManager_(mgr, v, cid, isNewClient, origin){
+function notifyManager_(mgr, v, cid, isNewClient, origin, hist, office){
   if(!tgToken_()) return false;
   tgPoll_();
   var props = PropertiesService.getScriptProperties(), group = props.getProperty('TG_GROUP');
@@ -574,6 +608,9 @@ function notifyManager_(mgr, v, cid, isNewClient, origin){
     (v.role ? '🏷 ' + htmlEsc_(v.role) + (v.mode ? ' · ' + htmlEsc_(v.mode) : '') + '\n' : '') +
     (v.goal ? '🎯 ' + htmlEsc_(v.goal) + '\n' : '') +
     (jk ? '🏠 ' + htmlEsc_(jk) + '\n' : '') +
+    '\n' + historyText_(hist || [], String(v.id || '')) +
+    (office && (office.topic || office.stage || office.decision) ? '📁 В «' + office.tab + '» (' + dmy_(office.date) + '): ' +
+      [office.topic, office.stage, office.decision].filter(Boolean).map(htmlEsc_).join(' · ') + '\n' : '') +
     '\n📌 ' + htmlEsc_(origin || 'Менеджер клиента') + '\n' +
     '👔 <b>Менеджер: </b>' + tag + '\n\nВстретьте, пожалуйста, клиента.';
   var targets = group ? [group] : (who ? [String(who.id)] : Object.keys(tgChats_()));
@@ -716,6 +753,7 @@ function otpRequest_(q){
              (cl && cl.name ? 'В базе: ' + cl.name + '\n' : 'В базе не найден\n') +
              (cid ? '🆔 ID клиента: ' + cid + '\n' : '') +
              ownerLine_(ph) +
+             visitsLine_(ph) +
              '\nКод подтверждения: ' + code + '\n\n' +
              'Введите код на киоске сами, сообщите его гостю или нажмите «Подтвердить».';
   ids.forEach(function(id){
