@@ -116,6 +116,54 @@ input[aria-invalid="true"]{border-color:var(--red);background:var(--red-soft)}
 #p-visits .vgrid{display:grid;grid-template-columns:repeat(auto-fit,minmax(300px,1fr));gap:0 32px}
 #p-visits .vform .actions{position:static;margin:4px -22px 0;padding:14px 22px;border-top:1px solid var(--line)}
 #p-visits .vadd{margin-left:auto}
+#p-visits .vbar{display:flex;flex-wrap:wrap;gap:10px 18px;align-items:center;justify-content:space-between;margin:0 0 14px}
+#p-visits .vseg{display:inline-flex;align-items:center;gap:4px;background:var(--card);border:1px solid var(--line);border-radius:12px;padding:4px}
+#p-visits .vseg[hidden]{display:none}
+#p-visits .vseg span{font-size:12.5px;color:var(--ink-3);padding:0 6px 0 8px}
+#p-visits .vseg button{appearance:none;border:0;background:transparent;font:inherit;font-size:13.5px;font-weight:600;color:var(--ink-2);padding:8px 14px;border-radius:9px;cursor:pointer}
+#p-visits .vseg button[aria-pressed="true"]{background:var(--green);color:#fff}
+#p-visits .vboard{display:grid;grid-auto-flow:column;grid-auto-columns:minmax(270px,306px);gap:16px;overflow-x:auto;padding:2px 2px 12px;align-items:start;scroll-snap-type:x proximity}
+#p-visits .vboard[hidden]{display:none}
+#p-visits .vboard>.empty{grid-column:1/-1}
+#p-visits .kcol{background:var(--kcol,#EEF0F2);border-radius:18px;padding:10px 10px 6px;scroll-snap-align:start;min-width:0}
+#p-visits .kcol-h{display:flex;align-items:flex-start;gap:10px;padding:8px 8px 14px}
+#p-visits .kcol-h .bar{width:4px;height:22px;border-radius:3px;margin-top:2px;flex:none}
+#p-visits .kcol-h div{flex:1;min-width:0}
+#p-visits .kcol-h h3{margin:0;font-size:15px;font-weight:700;letter-spacing:.02em;text-transform:uppercase;color:var(--ink)}
+#p-visits .kcol-h p{margin:3px 0 0;font-size:12.5px;color:var(--ink-3)}
+#p-visits .kcol-add{appearance:none;border:0;background:transparent;color:var(--ink-2);width:30px;height:30px;border-radius:8px;cursor:pointer;display:grid;place-items:center}
+#p-visits .kcol-add:hover{background:var(--card)}
+#p-visits .vboard svg{width:16px;height:16px;fill:none;stroke:currentColor;stroke-width:1.6;stroke-linecap:round;stroke-linejoin:round;flex:none}
+#p-visits .kcol-list{display:grid;gap:12px}
+#p-visits .kcol-empty{font-size:13px;color:var(--ink-3);text-align:center;padding:22px 0;border:1.5px dashed var(--line);border-radius:14px}
+#p-visits .kcol-new{appearance:none;border:0;background:transparent;font:inherit;font-size:14px;font-weight:600;color:var(--ink-2);display:flex;align-items:center;gap:8px;padding:14px 10px;cursor:pointer;width:100%;border-radius:10px}
+#p-visits .kcol-new:hover{color:var(--green)}
+#p-visits .kc{--c:#3B9BE0;position:relative;border-radius:16px;background:linear-gradient(180deg,var(--c) 0,var(--c) 34px,var(--card) 34px);box-shadow:0 1px 2px rgba(16,24,40,.06),0 4px 14px rgba(16,24,40,.07);cursor:pointer;transition:transform .15s,box-shadow .15s;outline:none}
+#p-visits .kc:hover,#p-visits .kc:focus-visible{transform:translateY(-2px);box-shadow:0 2px 4px rgba(16,24,40,.08),0 10px 24px rgba(16,24,40,.12)}
+#p-visits .kc-red{--c:#EF4444}#p-visits .kc-orange{--c:#F97316}#p-visits .kc-green{--c:#22A55A}#p-visits .kc-blue{--c:#3B9BE0}
+#p-visits .kc-band{height:34px;line-height:28px;text-align:center;color:#fff;font-size:11.5px;font-weight:700;letter-spacing:.08em}
+#p-visits .kc-body{position:relative;margin-top:-8px;background:var(--card);border-radius:14px 14px 16px 16px;padding:10px 10px 0}
+#p-visits .kc-body:before{content:"";position:absolute;inset:-1px 0 auto;height:44px;border-radius:14px 14px 0 0;background:linear-gradient(180deg,color-mix(in srgb,var(--c) 22%,transparent),transparent);pointer-events:none}
+#p-visits .kc-in{position:relative;border:1.5px dashed var(--line);border-radius:12px;padding:12px 12px 12px}
+#p-visits .kc-t{font-size:16px;font-weight:700;letter-spacing:-.01em;color:var(--ink);display:flex;align-items:baseline;gap:8px;justify-content:space-between}
+#p-visits .kc-id{font-size:11.5px;font-weight:700;color:var(--green);white-space:nowrap}
+#p-visits .kc-d{margin-top:6px;font-size:13px;line-height:1.45;color:var(--ink-3);display:-webkit-box;-webkit-line-clamp:2;-webkit-box-orient:vertical;overflow:hidden;min-height:2.9em}
+#p-visits .kc-row{display:flex;align-items:center;justify-content:space-between;gap:8px;margin-top:12px}
+#p-visits .kc-av{display:flex;align-items:center;gap:8px;min-width:0}
+#p-visits .av{width:30px;height:30px;border-radius:50%;display:grid;place-items:center;font-size:11.5px;font-weight:700;color:#fff;background:linear-gradient(135deg,#1F8A3A,#0E6D23);box-shadow:0 0 0 2px var(--card);flex:none}
+#p-visits .av-none{background:#C3C8CF}
+#p-visits .av-n{font-size:12.5px;font-weight:600;color:var(--ink-2);white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+#p-visits .av-n.muted{color:var(--ink-3);font-weight:500}
+#p-visits .pill{font-size:12px;font-weight:600;border-radius:7px;padding:5px 9px;white-space:nowrap;flex:none}
+#p-visits .p-blue{background:#E3F1FC;color:#1F74B7}#p-visits .p-yellow{background:#FFF4D6;color:#A26A00}#p-visits .p-violet{background:#EFE8FC;color:#6A3FC0}
+#p-visits .p-green{background:#E3F4E8;color:#1B7A3A}#p-visits .p-red{background:#FDE8E8;color:#C02626}#p-visits .p-orange{background:#FEEEDF;color:#B4530A}#p-visits .p-gray{background:#EEF0F2;color:#5E6670}
+#p-visits .kc-f{display:flex;align-items:center;gap:14px;padding:12px 4px 12px;font-size:13.5px;color:var(--ink-2)}
+#p-visits .kc-f span{display:inline-flex;align-items:center;gap:5px}
+#p-visits .kc-date{margin-left:auto;color:var(--ink-3);font-size:13px}
+#p-visits .b-blue{background:#3B9BE0}#p-visits .b-green{background:#22A55A}#p-visits .b-orange{background:#F97316}#p-visits .b-red{background:#EF4444}#p-visits .b-violet{background:#8B5CF6}#p-visits .b-gray{background:#9AA3AD}
+:root[data-theme="dark"] #p-visits .kcol{--kcol:#121C16}
+@media (prefers-color-scheme:dark){ :root:not([data-theme="light"]) #p-visits .kcol{--kcol:#121C16} }
+@media (max-width:700px){ #p-visits .vboard{grid-auto-columns:86%} #p-visits .vseg button{padding:8px 10px;white-space:nowrap;font-size:13px} #p-visits .vseg span{display:none} }
 #p-visits .cidcard{display:block;padding:14px 16px;margin:0 0 16px;border-radius:12px;background:var(--card);border:1px solid var(--green);font-size:14px}
 #p-visits .cidcard[hidden]{display:none}
 #p-visits .cid-id{font-size:22px;font-weight:700;color:var(--green);letter-spacing:-.02em}
@@ -1259,6 +1307,11 @@ function initVisits(root){
   filterBarHTML("ID клиента (SB-10001), имя, телефон, роль, ЖК, цель…", '<button type="button" class="btn btn-main btn-sm vadd" data-f="vadd">+ Добавить визит</button>'+expBtns())+
   '<div class="cidcard" data-f="cidcard" hidden></div>'+
   '<div class="stats" data-f="stats"></div>'+
+  '<div class="vbar"><div class="vseg" data-f="vview" role="group" aria-label="Вид">'+
+    '<button type="button" data-v="cards">Клиентская база</button><button type="button" data-v="table">Таблица визитов</button></div>'+
+    '<div class="vseg" data-f="vgroup" role="group" aria-label="Колонки"><span>Колонки:</span>'+
+    '<button type="button" data-v="heat">по частоте</button><button type="button" data-v="role">по роли</button><button type="button" data-v="mgr">по менеджеру</button></div></div>'+
+  '<div class="vboard" data-f="board" hidden></div>'+
   '<div class="tbl-wrap" data-f="tblw"></div>'+
   '<datalist id="visGoalsDL"></datalist><datalist id="visDirsDL">'+VIS_DIRS.map(function(d){return '<option value="'+esc(d)+'">';}).join("")+'</datalist>';
 
@@ -1380,6 +1433,74 @@ function initVisits(root){
       return normTxt([v.cid,v.cmgr,v.name,v.phone,v.role,v.jk,v.goal,v.company,v.agency,v.dir,v.email,v.district,v.rooms,v.area,v.floor,v.source].join(" ")).indexOf(q)>=0;
     });
   }
+  /* ---------- клиентская база: карточки клиентов в колонках ---------- */
+  var VIEW=lsGet("sb_vis_view")||"cards", GROUP=lsGet("sb_vis_group")||"heat";
+  var ROLE_C={"Покупатель":"green","Клиент":"blue","Брокер":"orange","Партнёр":"violet"};
+  var HEAT=[["new","Новые клиенты","НОВЫЙ КЛИЕНТ","blue"],["rep","Повторные визиты","ПОВТОРНЫЙ ВИЗИТ","green"],["often","Частые гости","ЧАСТЫЙ ГОСТЬ","orange"],["vip","Постоянные (5+)","ПОСТОЯННЫЙ КЛИЕНТ","red"]];
+  function heatOf(n){ return n>=5?HEAT[3]:n>=3?HEAT[2]:n===2?HEAT[1]:HEAT[0]; }
+  var STAGE_C={"Горячий":"red","Потенциальный":"blue","Думает":"yellow","Отказ":"gray"};
+  function officeMap(){ var m={}; (S.leads||[]).forEach(function(x){ var k=String(x.tel||x.wa||"").replace(/\D/g,"").slice(-9); if(k.length<9) return;
+      var t=String(x.date||"")+" "+String(x.time||""); if(!m[k]||m[k].t<t) m[k]={t:t, stage:x.stage||"", topic:x.topic||"", mgr:x.mgr||""}; }); return m; }
+  function initials(n){ n=String(n||"").trim(); if(!n) return "?"; var p=n.split(/\s+/); return (p[0][0]+(p[1]?p[1][0]:"")).toUpperCase(); }
+  function dLong(at){ var m=String(at||"").match(/^(\d{4})-(\d{2})-(\d{2})/); return m ? parseInt(m[3],10)+" "+["января","февраля","марта","апреля","мая","июня","июля","августа","сентября","октября","ноября","декабря"][+m[2]-1] : ""; }
+  var IC={ v:'<svg viewBox="0 0 20 20" aria-hidden="true"><rect x="3" y="4.5" width="14" height="12" rx="2.5"/><path d="M3 8.5h14M7 2.8v3.4M13 2.8v3.4"/></svg>',
+           q:'<svg viewBox="0 0 20 20" aria-hidden="true"><path d="M4 4.5h12a1.5 1.5 0 0 1 1.5 1.5v7a1.5 1.5 0 0 1-1.5 1.5H9l-3.5 3v-3H4A1.5 1.5 0 0 1 2.5 13V6A1.5 1.5 0 0 1 4 4.5z"/></svg>',
+           h:'<svg viewBox="0 0 20 20" aria-hidden="true"><path d="M3 17.5V8l7-5 7 5v9.5"/><path d="M8 17.5v-5h4v5"/></svg>',
+           plus:'<svg viewBox="0 0 20 20" aria-hidden="true"><path d="M10 4v12M4 10h12"/></svg>' };
+  function drawBoard(bd, rr){
+    if(loading && !loaded){ bd.innerHTML='<div class="empty"><b>Загружаю клиентов…</b></div>'; return; }
+    var OM=officeMap(), C={}, order=[];
+    rr.forEach(function(v){ var k=ckey(v); if(!C[k]){ C[k]={k:k, H:v._hist||[v], inP:0}; order.push(k); } C[k].inP++; });
+    var list=order.map(function(k){ var c=C[k], H=c.H, last=H[H.length-1]; c.last=last; c.n=H.length;
+      c.off=OM[String(last.phone||"").replace(/\D/g,"").slice(-9)]||null; c.mgr=last.cmgr||(c.off&&c.off.mgr)||"";
+      var g={}, j={}; H.forEach(function(v){ if(v.goal) g[v.goal]=(g[v.goal]||0)+1; String(v.jk||"").split(/,\s*/).filter(Boolean).forEach(function(x){ j[x]=1; }); });
+      c.goals=Object.keys(g).sort(function(a,b){return g[b]-g[a];}); c.jk=Object.keys(j); return c; });
+    list.sort(function(a,b){ return String(b.last.at||"").localeCompare(String(a.last.at||"")); });
+    var cols=[], by={};
+    function col(key,title,color){ if(!by[key]){ by[key]={key:key,title:title,color:color,items:[]}; cols.push(by[key]); } return by[key]; }
+    if(GROUP==="heat") HEAT.forEach(function(h){ col(h[0],h[1],h[3]); });
+    if(GROUP==="role") ["Покупатель","Клиент","Брокер","Партнёр"].forEach(function(r){ col(r,{"Покупатель":"Покупатели","Клиент":"Клиенты","Брокер":"Брокеры","Партнёр":"Партнёры"}[r],ROLE_C[r]); });
+    list.forEach(function(c){
+      if(GROUP==="heat") by[heatOf(c.n)[0]].items.push(c);
+      else if(GROUP==="role") col(c.last.role||"—",c.last.role||"Без роли","gray").items.push(c);
+      else col(c.mgr||"—",c.mgr||"Без менеджера",c.mgr?"green":"gray").items.push(c);
+    });
+    if(GROUP==="mgr") cols.sort(function(a,b){ return (a.key==="—")-(b.key==="—") || b.items.length-a.items.length; });
+    function plural(n,a,b,c){ var m=n%10,h=n%100; return n+" "+(m===1&&h!==11?a:(m>=2&&m<=4&&(h<10||h>=20)?b:c)); }
+    function card(c){
+      var h=heatOf(c.n), L=c.last, st=c.off&&c.off.stage, pill=st?'<span class="pill p-'+(STAGE_C[st]||"gray")+'">'+esc(st)+'</span>':'<span class="pill p-'+(ROLE_C[L.role]||"gray")+'">'+esc(L.mode||L.role||"Визит")+'</span>';
+      var desc=c.goals.length?c.goals.slice(0,2).join(" · ")+(c.goals.length>2?" · ещё "+(c.goals.length-2):""):"Цель визита не указана";
+      if(c.jk.length) desc+=" — "+c.jk.join(", ");
+      return '<article class="kc kc-'+h[3]+'" data-cid="'+esc(L.cid||L.phone||"")+'" tabindex="0" title="Открыть историю клиента">'+
+        '<div class="kc-band">'+(c.n>=5?h[2]+" · "+c.n+" ВИЗИТОВ":h[2])+'</div>'+
+        '<div class="kc-body"><div class="kc-in">'+
+          '<div class="kc-t">'+esc(L.name||"Без имени")+(L.cid?'<span class="kc-id">'+esc(L.cid)+'</span>':'')+'</div>'+
+          '<div class="kc-d">'+esc(desc)+'</div>'+
+          '<div class="kc-row"><div class="kc-av">'+(c.mgr?'<span class="av" title="Менеджер: '+esc(c.mgr)+'">'+esc(initials(c.mgr))+'</span><span class="av-n">'+esc(c.mgr)+'</span>':'<span class="av av-none" title="Менеджер не назначен">?</span><span class="av-n muted">без менеджера</span>')+'</div>'+pill+'</div>'+
+        '</div>'+
+        '<div class="kc-f"><span title="Визитов всего">'+IC.v+c.n+'</span><span title="Разных вопросов">'+IC.q+c.goals.length+'</span><span title="Интересующих ЖК">'+IC.h+c.jk.length+'</span><span class="kc-date">'+esc(dLong(L.at))+'</span></div></div>'+
+      '</article>';
+    }
+    if(!list.length){ bd.innerHTML='<div class="empty"><b>Клиентов нет</b>'+(ROWS.length?'Измените период или запрос.':'Визиты появятся после регистрации на киоске.')+'</div>'; return; }
+    bd.innerHTML=cols.map(function(cl){
+      var nv=cl.items.reduce(function(s,c){ return s+c.n; },0);
+      return '<section class="kcol"><header class="kcol-h"><i class="bar b-'+cl.color+'"></i><div><h3>'+esc(cl.title)+'</h3><p>'+plural(cl.items.length,"клиент","клиента","клиентов")+', '+plural(nv,"визит","визита","визитов")+'</p></div>'+
+        '<button type="button" class="kcol-add" data-add="'+esc(GROUP==="role"?cl.key:"")+'" title="Добавить визит">'+IC.plus+'</button></header>'+
+        '<div class="kcol-list">'+(cl.items.length?cl.items.map(card).join(""):'<div class="kcol-empty">Пока пусто</div>')+'</div>'+
+        '<button type="button" class="kcol-new" data-add="'+esc(GROUP==="role"?cl.key:"")+'">'+IC.plus+'Добавить визит</button></section>';
+    }).join("");
+  }
+  root.addEventListener("click", function(ev){
+    var vb=ev.target.closest('[data-f="vview"] button'), gb=ev.target.closest('[data-f="vgroup"] button');
+    if(vb){ VIEW=vb.dataset.v; lsSet("sb_vis_view",VIEW); draw(); return; }
+    if(gb){ GROUP=gb.dataset.v; lsSet("sb_vis_group",GROUP); draw(); return; }
+    var ad=ev.target.closest(".vboard [data-add]");
+    if(ad){ if(editing){ reset(); } if(ad.dataset.add) { gset(root,"vrole",ad.dataset.add); refreshGoals(); summary(); } f(root,"vadd").click(); if(ad.dataset.add){ gset(root,"vrole",ad.dataset.add); refreshGoals(); summary(); } return; }
+    var kc=ev.target.closest(".vboard .kc");
+    if(kc && kc.dataset.cid){ var qi=f(root,"q"); qi.value=kc.dataset.cid; qi.dispatchEvent(new Event("input",{bubbles:true})); root.querySelector(".cidcard").scrollIntoView({block:"start",behavior:"smooth"}); }
+  });
+  root.addEventListener("keydown", function(ev){ if(ev.key==="Enter" && ev.target.classList && ev.target.classList.contains("kc")) ev.target.click(); });
+
   function draw(){
     numberVisits();
     var rr=pick(), byRole={}, first=0, quiz=0, days={};
@@ -1416,6 +1537,11 @@ function initVisits(root){
     }
     var w=f(root,"tblw");
     if(!w.classList.contains("tbl-wrap")){ var nw=el('<div class="tbl-wrap" data-f="tblw"></div>'); w.parentNode.replaceChild(nw,w); w=nw; }
+    var bd=f(root,"board"), cards=VIEW==="cards";
+    Array.prototype.forEach.call(root.querySelectorAll('[data-f="vview"] button'),function(b){ b.setAttribute("aria-pressed", b.dataset.v===VIEW?"true":"false"); });
+    Array.prototype.forEach.call(root.querySelectorAll('[data-f="vgroup"] button'),function(b){ b.setAttribute("aria-pressed", b.dataset.v===GROUP?"true":"false"); });
+    f(root,"vgroup").hidden=!cards; bd.hidden=!cards; w.hidden=cards;
+    if(cards){ drawBoard(bd, rr); return; }
     if(loading && !loaded){ w.innerHTML='<div class="empty" style="border:0"><b>Загружаю визиты…</b></div>'; return; }
     if(!rr.length){ w.innerHTML='<div class="empty" style="border:0"><b>Визитов нет</b>'+(loaded?(ROWS.length?'Измените период или запрос.':'Добавьте визит слева или зарегистрируйте на киоске /visit/.'):'Пока ни одного визита.')+'</div>'; return; }
     w.innerHTML='<table><thead><tr><th>Дата/время</th><th>ID клиента</th><th>Визит</th><th>Роль</th><th>Режим</th><th>ФИО</th><th>Менеджер</th><th>Телефон</th><th>Email</th>'+
