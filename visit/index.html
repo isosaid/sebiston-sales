@@ -924,7 +924,11 @@ const VK={
   num:["1 2 3","4 5 6","7 8 9","⌫ 0 Далее"]
 };
 let vkLayer="ru", vkShift=true, vkPrevAlpha="ru";
-const useVK=()=>!isM() && matchMedia("(pointer:coarse)").matches;   // только на сенсорном киоске
+/* своя клавиатура: на любом сенсорном экране (планшет, сенсорный моноблок/киоск на Windows).
+   ?kb=1 — показать всегда (например, проверить на компьютере), ?kb=0 — выключить и пользоваться системной. */
+const KB_FORCE=(()=>{ const m=location.search.match(/[?&]kb=([01])/); if(m){ try{ localStorage.setItem("sebiston_kb",m[1]); }catch(e){} return m[1]; } try{ return localStorage.getItem("sebiston_kb"); }catch(e){ return null; } })();
+const isTouch=()=>matchMedia("(pointer:coarse)").matches||matchMedia("(any-pointer:coarse)").matches||(navigator.maxTouchPoints||0)>0||("ontouchstart" in window);
+const useVK=()=>!isM() && (KB_FORCE==="1" || (KB_FORCE!=="0" && isTouch()));
 function vkFor(el){ if(!el) return "ru"; if(el.id==="i_phone"||el.id==="i_code") return "num"; if(el.id==="i_email") return "en"; return lang==="tg"?"tj":"ru"; }
 function vkRender(){ const k=$("#vk"); const rows=VK[vkLayer]; k.classList.toggle("num",vkLayer==="num");
   k.innerHTML=rows.map(r=>'<div class="r">'+r.split(" ").map(c=>{
