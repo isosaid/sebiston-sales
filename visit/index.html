@@ -49,7 +49,7 @@ button{cursor:pointer;border:0;background:none;text-align:inherit}
 /* ---------- своя компактная клавиатура киоска ---------- */
 #vk{position:fixed;z-index:60;bottom:0;background:#d6d9df;border-radius:18px 18px 0 0;box-shadow:0 -8px 30px rgba(0,0,0,.16);
   padding:10px 10px calc(10px + env(safe-area-inset-bottom));display:flex;flex-direction:column;gap:7px;transform:translateY(105%);transition:transform .25s cubic-bezier(.2,.8,.2,1);
-  font:500 19px/1 Inter,system-ui,sans-serif;user-select:none;-webkit-user-select:none;touch-action:manipulation}
+  font:500 21px/1 Inter,system-ui,sans-serif;user-select:none;-webkit-user-select:none;touch-action:manipulation}
 #vk.on{transform:none}
 #vk .r{display:flex;gap:6px;flex:1}
 #vk button{flex:1;min-width:0;display:flex;align-items:center;justify-content:center;text-align:center;line-height:1;height:auto;margin:0;border:0;border-radius:9px;background:#fff;color:#1d1d1f;box-shadow:0 1px 0 rgba(0,0,0,.28);font:inherit;padding:0;transition:background .08s}
@@ -59,7 +59,7 @@ button{cursor:pointer;border:0;background:none;text-align:inherit}
 #vk .go{background:var(--g);color:#fff;font-weight:700;font-size:16px}
 #vk .go:active{background:#1f8f39}
 #vk .hide{background:#aeb3be;font-size:15px}
-#vk.num button{font-size:24px}
+#vk.num button{font-size:26px}
 #vk.num .r{width:min(100%,480px);margin:0 auto}
 #installBar{position:fixed;left:16px;bottom:16px;z-index:200;display:flex;gap:6px;align-items:center;background:#fff;border-radius:14px;padding:6px;box-shadow:0 8px 28px rgba(0,0,0,.18);font:600 15px/1 Inter,system-ui,sans-serif}
 #installBar button{border:0;border-radius:10px;padding:12px 16px;font:inherit;cursor:pointer}
@@ -941,7 +941,7 @@ function vkRender(){ const k=$("#vk"); const rows=VK[vkLayer]; k.classList.toggl
 function vkPlace(){ const k=$("#vk"), fr=$("#frame"); if(!k) return;
   const card=$("#tabs")||$("#body"), r=card?card.getBoundingClientRect():null, sd=$("#side").getBoundingClientRect();
   const left=Math.max(0,sd.right+8), w=innerWidth-left-8;                      // под колонкой формы, фото слева остаётся видно
-  k.style.left=left+"px"; k.style.width=w+"px"; k.style.height=Math.round(Math.min(250,Math.max(190,innerHeight*0.25)))+"px"; }
+  k.style.left=left+"px"; k.style.width=w+"px"; k.style.height=Math.round(Math.min(360,Math.max(290,innerHeight*0.36)))+"px"; }
 function vkShow(el){ if(!useVK()) return; const k=$("#vk"); vkLayer=vkFor(el); vkPrevAlpha=vkLayer==="num"?vkPrevAlpha:vkLayer;
   vkShift = el.id!=="i_email" && !el.value; vkPlace(); vkRender(); k.classList.add("on"); k.setAttribute("aria-hidden","false");
   setTimeout(keepFocusedVisible,30); }
@@ -979,9 +979,12 @@ function kbGap(){ if(vkOn()) return $("#vk").offsetHeight;                      
   const vv=window.visualViewport; if(!vv) return 0; return Math.max(0, (baseH||innerHeight) - (vv.height+vv.offsetTop)); }
 let kbShift=0;
 function kbOpen(){ return typing() && !isM() && kbGap()>=60; }
-function applyShift(v,anim){ const fr=$("#frame"), max=kbOpen()?kbGap()+16:0;     // можно прокрутить так, чтобы низ формы встал над клавиатурой
-  kbShift=Math.max(0,Math.min(max,v)); fr.style.transition=anim===false?"none":"";
-  fr.style.transform = kbShift ? `translateY(${-Math.round(kbShift)}px)` : ""; }
+function applyShift(v,anim){ const max=kbOpen()?kbGap()+16:0;     // можно прокрутить так, чтобы низ формы встал над клавиатурой
+  kbShift=Math.max(0,Math.min(max,v));
+  /* едет только правая часть (форма); фото/видео слева стоит на месте */
+  const fm=$("#form"), sc=stageScale()||1;
+  if(fm){ fm.style.transition = anim===false ? "none" : "transform .28s cubic-bezier(.2,.8,.2,1)";
+          fm.style.transform = kbShift ? `translateY(${(-kbShift/sc).toFixed(2)}px)` : ""; } }
 function keepFocusedVisible(){
   const a=document.activeElement;
   if(!typing()){ applyShift(0); return; }
