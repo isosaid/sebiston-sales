@@ -2,7 +2,7 @@
 <html lang="ru">
 <head>
 <meta charset="utf-8">
-<meta name="build" content="2026-10-10 16:44">
+<meta name="build" content="2026-11-02 10:55">
 <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
 <title>Sebiston — отдел продаж</title>
 <link rel="manifest" href="manifest.webmanifest">
@@ -647,7 +647,7 @@ window.SB_API="https://script.google.com/macros/s/AKfycbwAwrts4_R3JlbBpfUKtaGtwR
 /* убраны из отдела — не показываются нигде, даже если остались в списке сотрудников */
 var EX_MGRS = ["Зарина","Заррина","Адам","Асламджон"];
 /* другие написания имени одного и того же менеджера → основное имя */
-var MGR_ALIAS = {"Зарина":"Олимова З.","Заррина":"Олимова З.","Амира":"Давлатзода А."};
+var MGR_ALIAS = {"Зарина":"Олимова З.","Заррина":"Олимова З.","Амира":"Давлатзода А.","sudobasuhrob2@gmail.com":"Судоба","Sudobasuhrob2@gmail.com":"Судоба"};
 function fixAliases(){
   ["leads","deals","tlog","daily"].forEach(function(c){ (S[c]||[]).forEach(function(x){ if(x && MGR_ALIAS[x.mgr]) x.mgr=MGR_ALIAS[x.mgr]; }); });
   Object.keys(S.results||{}).forEach(function(k){
