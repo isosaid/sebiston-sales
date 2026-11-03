@@ -307,6 +307,7 @@ function doPost(e){
   try{ seedUsers_(false); }catch(x){}
   if(q.a === 'login') return reply_(login_(q.u, q.p));
   if (q.a === 'visit') return reply_(saveVisit_(q.v));
+  if (q.a === 'quiz')  return reply_(saveQuiz_(q));
   if (q.a === 'otp_request') return reply_(otpRequest_(q));
   if (q.a === 'otp_status')  return reply_(otpStatus_(q));
   if (q.a === 'otp_verify')  return reply_(otpVerify_(q));
@@ -570,6 +571,43 @@ function findManager_(phone){
   return res;
 }
 
+
+/* ---------- анкета о будущей квартире (отдельная страница /anketa/) ----------
+   Ответы пишутся на лист «Анкеты» и в последний визит этого номера (колонки «Район»…«Откуда узнали»). */
+var QUIZ_HEAD = ['Дата','ФИО','Телефон','Район','Тип квартиры','Площадь','Этаж','Откуда узнали','ID клиента','Язык','Привязана к визиту','ID анкеты'];
+function saveQuiz_(q){
+  var ph = digitsOnly_(q.phone).slice(-9);
+  if (ph.length < 9) return { ok:false, err:'phone' };
+  var ss = SpreadsheetApp.getActive(), sh = ss.getSheetByName('Анкеты');
+  if (!sh) { sh = ss.insertSheet('Анкеты'); sh.getRange(1, 1, 1, QUIZ_HEAD.length).setValues([QUIZ_HEAD]).setBackground('#0E6D23').setFontColor('#FFFFFF').setFontWeight('bold'); sh.setFrozenRows(1); sh.getRange('C:C').setNumberFormat('@'); }
+  var lock = LockService.getScriptLock(); lock.waitLock(20000);
+  var linked = '', cid = '';
+  try {
+    var id = String(q.id || ('quiz-' + Date.now()));
+    var last = sh.getLastRow();
+    if (last >= 2) {                                   // повторная отправка той же анкеты — не дублируем
+      var ids = sh.getRange(2, QUIZ_HEAD.length, last - 1, 1).getValues();
+      for (var i = 0; i < ids.length; i++) if (String(ids[i][0]) === id) return { ok:true, duplicate:true };
+    }
+    cid = clientId_('+992' + ph, q.name, true);
+    var vals = VISIT_QUIZ.map(function(k){ return quizVal_(q[k]); });
+    // последний визит с этим номером за 60 дней — дописываем ему анкету
+    var vs = visitsSheet_(), vl = vs.getLastRow();
+    if (vl >= 2) {
+      var rows = vs.getRange(2, 1, vl - 1, 13).getValues(), best = 0, bestAt = '';
+      var lim = Utilities.formatDate(new Date(Date.now() - 60 * 864e5), 'Asia/Dushanbe', 'yyyy-MM-dd');
+      rows.forEach(function(r, i){
+        var at = r[0] instanceof Date ? Utilities.formatDate(r[0], 'Asia/Dushanbe', 'yyyy-MM-dd HH:mm') : String(r[0] || '');
+        if (digitsOnly_(r[4]).slice(-9) === ph && at >= lim && at >= bestAt) { best = i + 2; bestAt = at; }
+      });
+      if (best) { vs.getRange(best, 16, 1, VISIT_QUIZ.length).setValues([vals]); linked = bestAt; }
+    }
+    sh.appendRow([String(q.at || Utilities.formatDate(new Date(), 'Asia/Dushanbe', 'yyyy-MM-dd HH:mm')), String(q.name || ''), '+992' + ph]
+      .concat(vals).concat([cid, String(q.lang || ''), linked ? 'да, визит ' + linked : 'нет', id]));
+    SpreadsheetApp.flush();
+  } finally { lock.releaseLock(); }
+  return { ok:true, clientId: cid, linked: !!linked };
+}
 
 function testVisit(){
   return saveVisit_({ id:"test-"+Date.now(), at:new Date().toISOString(),
