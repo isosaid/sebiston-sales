@@ -563,8 +563,7 @@ function render(){
   if(role==="buyer"){
     const [fn,fp,fe,fj,fg]=L.items;
     h+=`<div class="flow" id="flow"><div class="frow"><div class="fcol">${field(fn)}</div><div class="fcol">${field(fp)}</div></div>`+
-       [fe,fj,fg].map(f=>`<div class="fcol">${field(f)}</div>`).join("")+quizHTML()+`</div>`+
-       `<div class="flowfade" id="flowfade"><span>${t("more_below")} <svg width="12" height="12" viewBox="0 0 12 12" fill="none"><path d="M2 4l4 4 4-4" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"/></svg></span></div>`;
+       [fe,fj,fg].map(f=>`<div class="fcol">${field(f)}</div>`).join("")+`</div>`;      // анкета о квартире вынесена на отдельную страницу /anketa/
     L.items=[];
   }
   for(const f of L.items){
@@ -729,7 +728,7 @@ function buildVisit(){
     v:{ id, at:new Date(now.getTime()-now.getTimezoneOffset()*60000).toISOString().slice(0,19), role:ROLE_RU[role], mode:modeTxt, name:who,   /* at — местное время киоска */
         phone:"+992"+digits(data.phone), email:data.email.trim(),
         jk:data.jk.slice(), goal, agency:data.agency.trim(), company:data.company.trim(), dir, lang:lang.toUpperCase(),
-        ...(role==="buyer" ? {district:Q.district, rooms:Q.rooms, area:Q.area, floor:Q.floor, source:Q.source} : {}) },
+        /* анкету киоск больше не отправляет — её заполняют по отдельной ссылке, ответы не затираются */ },
     fields:{ TITLE:"Визит в офис: "+ROLE_RU[role]+" — "+(who||phone), NAME:who,
       PHONE:[{VALUE:"+992"+digits(data.phone),VALUE_TYPE:"WORK"}],
       ...(data.email?{EMAIL:[{VALUE:data.email.trim(),VALUE_TYPE:"WORK"}]}:{}),
