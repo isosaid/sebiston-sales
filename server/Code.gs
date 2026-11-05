@@ -598,7 +598,8 @@ function saveQuiz_(q){
       var lim = Utilities.formatDate(new Date(Date.now() - 60 * 864e5), 'Asia/Dushanbe', 'yyyy-MM-dd');
       rows.forEach(function(r, i){
         var at = r[0] instanceof Date ? Utilities.formatDate(r[0], 'Asia/Dushanbe', 'yyyy-MM-dd HH:mm') : String(r[0] || '');
-        if (digitsOnly_(r[4]).slice(-9) === ph && at >= lim && at >= bestAt) { best = i + 2; bestAt = at; }
+        if (q.v && String(r[12]) === String(q.v)) { best = i + 2; bestAt = at; lim = '9999'; }          // ссылка из Telegram — точно этот визит
+        else if (digitsOnly_(r[4]).slice(-9) === ph && at >= lim && at >= bestAt) { best = i + 2; bestAt = at; }
       });
       if (best) { vs.getRange(best, 16, 1, VISIT_QUIZ.length).setValues([vals]); linked = bestAt; }
     }
@@ -606,7 +607,19 @@ function saveQuiz_(q){
       .concat(vals).concat([cid, String(q.lang || ''), linked ? 'да, визит ' + linked : 'нет', id]));
     SpreadsheetApp.flush();
   } finally { lock.releaseLock(); }
-  return { ok:true, clientId: cid, linked: !!linked };
+  var mgr = '', notified = false;
+  try {
+    var mg = findManager_('+992' + ph); mgr = mg ? mg.mgr : (assignedMgr_('+992' + ph, false) || assignedMgr_('+992' + ph, true));
+    var n = VISIT_QUIZ.filter(function(k){ return quizVal_(q[k]); }).length;
+    var text = '📝 <b>Анкета о квартире заполнена</b> · ' + n + ' из ' + VISIT_QUIZ.length + '\n\n' +
+      '👤 ' + htmlEsc_(q.name || '—') + '\n📞 +992' + ph + '\n' + (cid ? '🆔 ' + cid + '\n' : '') +
+      (linked ? '🔗 Привязана к визиту ' + htmlEsc_(dmy_(linked)) + ' ' + htmlEsc_(String(linked).slice(11, 16)) + '\n' : '🔗 Визита с этим номером нет — сохранена на листе «Анкеты»\n') + '\n' +
+      VISIT_QUIZ.map(function(k, i){ var a = quizVal_(q[k]); return (i + 1) + '. ' + QUIZ_Q[k] + ': ' + (a ? '<b>' + htmlEsc_(a) + '</b>' : '<i>— не ответил(а)</i>'); }).join('\n') +
+      '\n\n✏️ <a href="' + htmlEsc_(anketaLink_(q.name, '+992' + ph, q.v || '', q)) + '">Дополнить анкету</a>' + (n < VISIT_QUIZ.length ? ' — уточните у клиента остальные вопросы' : '') +
+      '\n👔 <b>Менеджер: </b>' + mgrTag_(mgr);
+    notified = tgSendMgr_(mgr, text);
+  } catch (e) {}
+  return { ok:true, clientId: cid, linked: !!linked, manager: mgr, notified: notified };
 }
 
 function testVisit(){
@@ -668,6 +681,39 @@ function tgChats_(){ try{ return JSON.parse(PropertiesService.getScriptPropertie
 function tgMgrs_(){ try{ return JSON.parse(PropertiesService.getScriptProperties().getProperty('TG_MGRS') || '{}'); }catch(e){ return {}; } }
 function htmlEsc_(x){ return String(x == null ? '' : x).replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;'); }
 
+/* отправка сообщения менеджеру: в группу менеджеров, иначе лично ему, иначе всем подключённым */
+function tgSendMgr_(mgr, text){
+  if(!tgToken_()) return false;
+  tgPoll_();
+  var group = PropertiesService.getScriptProperties().getProperty('TG_GROUP');
+  var who = tgMgrs_()[String(mgr || '').toLowerCase()];
+  var targets = group ? [group] : (who ? [String(who.id)] : Object.keys(tgChats_()));
+  var ok = false;
+  targets.forEach(function(id){ var r = tg_('sendMessage', { chat_id: Number(id), text: text, parse_mode: 'HTML', disable_web_page_preview: true }); ok = ok || !!(r && r.ok); });
+  return ok;
+}
+function mgrTag_(mgr){ var who = tgMgrs_()[String(mgr || '').toLowerCase()];
+  return htmlEsc_(mgr || '—') + (who ? (who.user ? ' (@' + who.user + ')' : ' (<a href="tg://user?id=' + who.id + '">отметить</a>)') : ''); }
+
+/* ---------- ссылка на анкету о квартире: с именем, телефоном, визитом и уже отмеченными ответами ---------- */
+var ANKETA_URL = 'https://isosaid.github.io/sebiston-sales/anketa/';
+var QUIZ_RU = {
+  district: ['Центр','Спальный район','Не принципиально'],
+  rooms:    ['1-комнатная','2-комнатная','3-комнатная','4 и более комнат'],
+  area:     ['до 50 м²','50–70 м²','70–90 м²','более 100 м²'],
+  floor:    ['до 5 этажа','до 9 этажа','выше 10 этажа'],
+  source:   ['Instagram | Социальные сети','Рекомендации знакомых','Проезжал(а) мимо объекта','Уже покупал(а) у вас квартиру'] };
+var QUIZ_Q = { district:'Район', rooms:'Тип квартиры', area:'Площадь', floor:'Этаж', source:'Откуда узнали' };
+function anketaLink_(name, phone, visitId, ans){
+  var code = VISIT_QUIZ.map(function(k){
+    var have = String((ans && ans[k]) || '');
+    var idx = (QUIZ_RU[k] || []).map(function(o, i){ return have.indexOf(o) >= 0 ? String(i) : ''; }).join('');
+    return idx || 'x';
+  }).join('-');
+  return ANKETA_URL + '?phone=' + encodeURIComponent(digitsOnly_(phone).slice(-9)) + '&name=' + encodeURIComponent(String(name || '')) +
+    (visitId ? '&v=' + encodeURIComponent(visitId) : '') + (code.replace(/[x-]/g, '') ? '&a=' + code : '');
+}
+
 /* «Ваш клиент пришёл в офис» — в группу менеджеров (или лично менеджеру, если группы нет) */
 function notifyManager_(mgr, v, cid, isNewClient, origin, hist, office){
   if(!tgToken_()) return false;
@@ -688,11 +734,9 @@ function notifyManager_(mgr, v, cid, isNewClient, origin, hist, office){
     (office && (office.topic || office.stage || office.decision) ? '📁 В «' + office.tab + '» (' + dmy_(office.date) + '): ' +
       [office.topic, office.stage, office.decision].filter(Boolean).map(htmlEsc_).join(' · ') + '\n' : '') +
     '\n📌 ' + htmlEsc_(origin || 'Менеджер клиента') + '\n' +
-    '👔 <b>Менеджер: </b>' + tag + '\n\nВстретьте, пожалуйста, клиента.';
-  var targets = group ? [group] : (who ? [String(who.id)] : Object.keys(tgChats_()));
-  var ok = false;
-  targets.forEach(function(id){ var r = tg_('sendMessage', { chat_id: Number(id), text: text, parse_mode: 'HTML', disable_web_page_preview: true }); ok = ok || !!(r && r.ok); });
-  return ok;
+    '👔 <b>Менеджер: </b>' + tag + '\n\nВстретьте, пожалуйста, клиента.' +
+    (String(v.role || '') === 'Покупатель' ? '\n\n📝 <a href="' + htmlEsc_(anketaLink_(v.name, v.phone, v.id, v)) + '">Анкета о квартире</a> — заполните с клиентом или перешлите ему ссылку' : '');
+  return tgSendMgr_(mgr, text);
 }
 function tgSaveChats_(o){ PropertiesService.getScriptProperties().setProperty('TG_CHATS', JSON.stringify(o)); }
 function digitsOnly_(x){ return String(x == null ? '' : x).replace(/\D/g, ''); }

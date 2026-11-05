@@ -137,8 +137,10 @@ document.addEventListener("click",e=>{
 });
 $("#ph").addEventListener("input",e=>{ e.target.value=fmtPhone(e.target.value); $("#phw").classList.remove("bad"); });
 $("#nm").addEventListener("input",()=>$("#nm").classList.remove("bad"));
-/* номер можно передать в ссылке: /anketa/?phone=900001122&name=Али */
-(()=>{ const q=new URLSearchParams(location.search); if(q.get("phone")) $("#ph").value=fmtPhone(q.get("phone")); if(q.get("name")) $("#nm").value=q.get("name"); })();
+/* ссылка из Telegram: ?phone=900001122&name=Али&v=<визит>&a=0-1-x-x-02 (уже отмеченные ответы — можно дополнить) */
+const QS=new URLSearchParams(location.search), VISIT=QS.get("v")||"";
+(()=>{ if(QS.get("phone")) $("#ph").value=fmtPhone(QS.get("phone")); if(QS.get("name")) $("#nm").value=QS.get("name");
+  const a=(QS.get("a")||"").split("-"); ["district","rooms","area","floor","source"].forEach((k,i)=>{ const c=a[i]||"x"; if(c!=="x") ans[k]=[...new Set(c.split("").map(Number).filter(n=>n>=0&&n<T.ru.quiz[i].o.length))].sort(); }); })();
 const QK="sebiston_anketa_queue";
 const getQ=()=>{ try{ return JSON.parse(localStorage.getItem(QK)||"[]"); }catch(e){ return []; } };
 const setQ=q=>{ try{ localStorage.setItem(QK,JSON.stringify(q)); }catch(e){} };
@@ -151,7 +153,7 @@ $("#send").addEventListener("click",async()=>{
   if(ph.length!==9){ $("#phw").classList.add("bad"); $("#msg").textContent=T[lang].e_phone; return; }
   if(!Object.values(ans).some(a=>a.length)){ $("#msg").textContent=T[lang].e_quiz; return; }
   const RU=T.ru.quiz, x={ id:Date.now()+"-"+Math.random().toString(36).slice(2,7), at:new Date(Date.now()-new Date().getTimezoneOffset()*6e4).toISOString().slice(0,16).replace("T"," "),
-    name, phone:"+992"+ph, lang:lang.toUpperCase() };
+    name, phone:"+992"+ph, lang:lang.toUpperCase(), v:VISIT };
   RU.forEach(q=>{ x[q.k]=ans[q.k].map(i=>q.o[i]).join(", "); });
   $("#send").disabled=true; $("#msg").textContent="";
   const ok=await post(x);
