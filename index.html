@@ -2,7 +2,7 @@
 <html lang="ru">
 <head>
 <meta charset="utf-8">
-<meta name="build" content="2026-11-02 10:55">
+<meta name="build" content="2026-11-05 13:18">
 <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
 <title>Sebiston — отдел продаж</title>
 <link rel="manifest" href="manifest.webmanifest">
@@ -655,7 +655,7 @@ function fixAliases(){
   });
 }
 function exMgr(list){ var o=[]; (list||[]).forEach(function(n){ if(EX_MGRS.indexOf(n)>=0) return; n=MGR_ALIAS[n]||n; if(o.indexOf(n)<0) o.push(n); }); return o; }
-var MGRS = exMgr(["Азиз","Амира","Бахора","Гесу","Манижа","Нозия","Фарзона","Судоба","Фарход"]);
+var MGRS = exMgr(["Азиз","Амира","Бахора","Гесу","Манижа","Нозия","Фарзона","Судоба","Исо","Фарход"]);
 /* список менеджеров приходит с сервера (лист «Пользователи»); здесь — последний известный */
 (function(){ try{ var st=exMgr(JSON.parse(localStorage.getItem("sebiston.staff")||"null")); if(st && st.length) MGRS=st; }catch(e){} })();
 var OBJECTS = ["Бульвар Скандинавия","ADDRESS Residence","Ахрори","Пулоди","Гиссар Молл","Варзоб Ривьера"];
