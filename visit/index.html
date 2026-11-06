@@ -401,7 +401,7 @@ ru:{
  r_buyer:"Покупатель", r_client:"Клиент", r_broker:"Брокер", r_partner:"Партнёр",
  s_reg:"Уже зарегистрирован", s_new:"Первый визит",
  name:"Имя и фамилия", name_ph:"Как к вам обращаться", phone:"Телефон", code:"Подтвердите", code_btn:"Подтвердить",
- email:"E-mail", email_ph:"Введите свой email", email_ph2:"Введите e-mail",
+ email:"E-mail", email_ph:"Введите свой email", email_ph2:"Введите e-mail", email_opt:"E-mail (необязательно)",
  jk:"Интересующие ЖК", jk_ph:"Выберите жилой комплекс", jk_title:"Выберите ЖК",
  goal:"Цель визита", goal_ph:"Выберите цель визита", goal_title:"Выберите цель визита",
  agency:"Агентство недвижимости", agency_ph:"Название агентства",
@@ -445,7 +445,7 @@ tg:{
  r_buyer:"Харидор", r_client:"Муштарӣ", r_broker:"Брокер", r_partner:"Ҳамкор",
  s_reg:"Аллакай сабт шудаам", s_new:"Ташрифи аввал",
  name:"Ном ва насаб", name_ph:"Чӣ тавр муроҷиат кунем", phone:"Телефон", code:"Тасдиқ кунед", code_btn:"Тасдиқ кардан",
- email:"E-mail", email_ph:"E-mail-и худро ворид кунед", email_ph2:"E-mail-ро ворид кунед",
+ email:"E-mail", email_ph:"E-mail-и худро ворид кунед", email_ph2:"E-mail-ро ворид кунед", email_opt:"E-mail (ихтиёрӣ)",
  jk:"Маҷмааҳои мавриди таваҷҷӯҳ", jk_ph:"Маҷмааи манзилиро интихоб кунед", jk_title:"Маҷмаъро интихоб кунед",
  goal:"Мақсади ташриф", goal_ph:"Мақсади ташрифро интихоб кунед", goal_title:"Мақсади ташрифро интихоб кунед",
  agency:"Агентии амволи ғайриманқул", agency_ph:"Номи агентӣ",
@@ -516,18 +516,18 @@ function layout(){
   }
   if(role==="client"){
     L.card=[285,579];
-    if(!verified){ L.items=[F("vphone",329,361,501,392),F("code",329,361,906,392),{k:"confirm",y:466},F("jk",589,622),F("goal",717,750)];
+    if(!verified){ L.items=[F("vphone",329,361,501,392),F("code",329,361,906,392),{k:"confirm",y:466},F("jk",589,622,501,394),F("email",589,622,906,392),F("goal",717,750)];
       L.locked=true; L.submitOff=true; L.note={y:883,k:"consent",c:1}; }
-    else { L.items=[{k:"person",y:329},{k:"pline",y:530},F("jk",589,622),F("goal",717,750)]; L.note={y:883,k:"visible",c:1}; }
+    else { L.items=[{k:"person",y:329},{k:"pline",y:530},F("jk",589,622,501,394),F("email",589,622,906,392),F("goal",717,750)]; L.note={y:883,k:"visible",c:1}; }
     return L;
   }
   // broker / partner
   const last = role==="broker" ? "jk" : "goal";
   if(mode==="reg" && role==="broker"){          // брокер «уже зарегистрирован» — как клиент: ЖК + цель визита
     L.card=[368,506];
-    if(!verified){ L.items=[F("vphone",395,427,501,392),F("code",395,427,906,392),{k:"confirm",y:518},F("jk",628,660),F("goal",751,783)];
+    if(!verified){ L.items=[F("vphone",395,427,501,392),F("code",395,427,906,392),{k:"confirm",y:518},F("jk",628,660,501,394),F("email",628,660,906,392),F("goal",751,783)];
       L.locked=true; L.submitOff=true; }
-    else L.items=[{k:"person",y:388},{k:"pline",y:569},F("jk",615,647),F("goal",743,775)];
+    else L.items=[{k:"person",y:388},{k:"pline",y:569},F("jk",615,647,501,394),F("email",615,647,906,392),F("goal",743,775)];
     L.note={y:888,k:"consent",c:1};
   } else if(mode==="reg"){
     L.card=[368,476];
@@ -538,7 +538,7 @@ function layout(){
   } else {
     L.card=[368,538];
     L.items = role==="broker"
-      ? [F("name",391,423,501,394),F("phone",391,423,906,392),F("agency",521,554,501,797,72),F("jk",651,684),F("goal",779,812)]
+      ? [F("name",391,423,501,394),F("phone",391,423,906,392),F("agency",521,554,501,394,72),F("email",521,554,906,392,72),F("jk",651,684),F("goal",779,812)]
       : [F("name",391,423,501,394),F("phone",391,423,906,392),F("company",521,554,501,394,72),F("email",521,554,906,394,72),F("dir",651,684),F("goal",779,812)];
   }
   return L;
@@ -560,12 +560,12 @@ function phoneBox(f,off){
 }
 function bad(k){
   if(!tried) return "";
-  const ok={name:data.name.trim().length>1, phone:phoneOk(), vphone:phoneOk(), email:emailOk(), agency:!!data.agency.trim(), company:!!data.company.trim(),
+  const ok={name:data.name.trim().length>1, phone:phoneOk(), vphone:phoneOk(), email:emailFine(), agency:!!data.agency.trim(), company:!!data.company.trim(),
             jk:data.jk.length>0, goal:data.goal!=null, dir:data.dir!=null, code:true}[k];
   return ok===false ? " bad":"";
 }
 function field(f,locked){
-  const lockMe = locked && (f.k==="jk"||f.k==="goal");
+  const lockMe = locked && (f.k==="jk"||f.k==="goal"||f.k==="email");
   const off = lockMe ? " off":"";
   const lab = {name:"name",phone:"phone",vphone:"phone",code:"code",email:"email",agency:"agency",company:"company",jk:"jk",goal:"goal",dir:"dir"}[f.k];
   let h=`<div class="lab${lockMe?" off":""}" style="left:${f.x}px;top:${f.lab}px">${t(lab)}</div>`;
@@ -573,7 +573,7 @@ function field(f,locked){
   const inp=(id,val,ph,type="text",extra="")=>`<div class="box${off}${bad(f.k)} ${extra}" style="${st}"><input id="${id}" type="${type}" autocomplete="off" placeholder="${esc(ph)}" value="${esc(val)}"></div>`;
   switch(f.k){
     case "name": h+=inp("i_name",data.name,t("name_ph")); break;
-    case "email": h+=inp("i_email",data.email,role==="partner"?t("email_ph2"):t("email_ph"),"text").replace("<input ","<input inputmode=\"email\" autocapitalize=\"off\" spellcheck=\"false\" "); break;
+    case "email": h+=inp("i_email",data.email,role==="buyer"?t("email_ph"):(emailNeed()?t("email_ph2"):t("email_opt")),"text").replace("<input ","<input inputmode=\"email\" autocapitalize=\"off\" spellcheck=\"false\" "); break;
     case "agency": h+=inp("i_agency",data.agency,t("agency_ph")); break;
     case "company": h+=inp("i_company",data.company,t("company_ph")); break;
     case "phone": case "vphone": h+=phoneBox(f,off); break;
@@ -657,11 +657,13 @@ function fullPhone(d){d=digits(d);return `+992 (${d.slice(0,2)}) ${d.slice(2,5)}
 /* ---------- validation ---------- */
 const phoneOk=()=>digits(data.phone).length===9;
 const emailOk=()=>/^[^@\s]+@[^@\s]+\.[^@\s]+$/.test(data.email);
+const emailNeed=()=>role==="buyer"||role==="partner";                       // клиенту и брокеру почта не обязательна
+const emailFine=()=>emailNeed()?emailOk():(!data.email.trim()||emailOk());
 function valid(){
   if(role==="buyer") return data.name.trim().length>1&&phoneOk()&&emailOk()&&data.jk.length&&data.goal!=null;
-  if(role==="client") return verified&&data.jk.length>0&&data.goal!=null;
-  if(mode==="reg") return verified&&(role==="broker"?(data.jk.length>0&&data.goal!=null):data.goal!=null);
-  if(role==="broker") return data.name.trim().length>1&&phoneOk()&&data.agency.trim()&&data.jk.length&&data.goal!=null;
+  if(role==="client") return verified&&data.jk.length>0&&data.goal!=null&&emailFine();
+  if(mode==="reg") return verified&&(role==="broker"?(data.jk.length>0&&data.goal!=null&&emailFine()):data.goal!=null);
+  if(role==="broker") return data.name.trim().length>1&&phoneOk()&&data.agency.trim()&&data.jk.length&&data.goal!=null&&emailFine();
   return data.name.trim().length>1&&phoneOk()&&data.company.trim()&&emailOk()&&data.dir!=null&&data.goal!=null;
 }
 
