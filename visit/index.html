@@ -80,8 +80,12 @@ button{cursor:pointer;border:0;background:none;text-align:inherit}
 .lg-i:focus{border-color:var(--g)}
 .lg-err{min-height:20px;margin:0 0 8px;color:#e5484d;font:500 14px Inter,sans-serif}
 .lg-btn{display:block;text-align:center;width:100%;height:58px;border:0;border-radius:12px;background:var(--g);color:#fff;font:700 18px Inter,sans-serif;cursor:pointer}
-#officeTag{position:fixed;left:14px;bottom:12px;z-index:50;background:rgba(0,0,0,.45);color:#fff;font:600 12.5px/1 Inter,sans-serif;padding:7px 11px;border-radius:999px;backdrop-filter:blur(6px);-webkit-backdrop-filter:blur(6px);user-select:none}
-#officeTag[hidden]{display:none}
+#officeBar{position:fixed;left:14px;bottom:12px;z-index:50;display:flex;align-items:center;gap:6px;user-select:none}
+#officeBar[hidden]{display:none}
+#officeTag,#officeOut{background:rgba(0,0,0,.45);color:#fff;font:600 12.5px/1 Inter,sans-serif;padding:8px 12px;border-radius:999px;backdrop-filter:blur(6px);-webkit-backdrop-filter:blur(6px);border:0}
+#officeOut{cursor:pointer;display:inline-flex;align-items:center;gap:5px}
+#officeOut:before{content:"⎋";font-size:13px}
+#officeOut:active{background:rgba(0,0,0,.65)}
 #swipeHint{position:fixed;top:14px;left:50%;white-space:nowrap;box-shadow:0 6px 20px rgba(0,0,0,.25);transform:translate(-50%,8px);z-index:50;background:rgba(37,37,37,.86);color:#fff;font:600 15px/1 Inter,sans-serif;padding:11px 18px;border-radius:22px;opacity:0;pointer-events:none;transition:opacity .3s,transform .3s}
 #swipeHint.on{opacity:1;transform:translate(-50%,0)}
 #frame{position:fixed;inset:0;overflow:hidden;overflow:clip;transition:transform .28s cubic-bezier(.2,.8,.2,1)}
@@ -338,7 +342,7 @@ html.m #dd .opt svg{top:17px}
     <button class="lg-btn" type="submit">Войти</button>
   </form>
 </div>
-<div id="officeTag" hidden></div>
+<div id="officeBar" hidden><span id="officeTag"></span><button type="button" id="officeOut">Выйти</button></div>
 <div id="swipeHint" aria-hidden="true">↕ Проведите пальцем — другие поля</div>
 <div id="frame"><div id="stage">
 
@@ -741,17 +745,19 @@ const QKEY="sebiston_visit_queue";
 const getQ=()=>{try{return JSON.parse(localStorage.getItem(QKEY)||"[]");}catch(e){return [];}};
 const setQ=q=>{try{localStorage.setItem(QKEY,JSON.stringify(q));}catch(e){}};
 /* ---------- вход в киоск: в каком офисе он стоит (каждый визит помечается офисом) ----------
-   Логины: admin(Головной офис), admin(Офис продаж), admin(Офис 92), admin(Офис 112). Выйти: ?logout или 5 касаний по метке офиса внизу слева. */
+   Логины: admin(Головной офис), admin(Офис продаж), admin(Офис 92), admin(Офис 112). Выйти: кнопка «Выйти» рядом с меткой офиса внизу слева или ?logout. */
 const OFFICES=["Головной офис","Офис продаж","Офис 92","Офис 112"];
 const OFFICE_PW={"Головной офис":"YWRtaW4=","Офис продаж":"YWRtaW4=","Офис 92":"YWRtaW4=","Офис 112":"YWRtaW4="};   // пароли (base64)
 const OKEY="sebiston_kiosk_office";
 const getOffice=()=>{ try{ return localStorage.getItem(OKEY)||""; }catch(e){ return ""; } };
 function officeOfLogin(u){ const m=String(u||"").trim().toLowerCase().replace(/\s+/g," ").match(/^admin\s*\((.+)\)$/); if(!m) return "";
   return OFFICES.find(o=>o.toLowerCase()===m[1].trim())||""; }
-function showLogin(){ const L=$("#login"); L.hidden=false; $("#officeTag").hidden=true;
+function showLogin(){ const L=$("#login"); L.hidden=false; $("#officeBar").hidden=true;
   $("#lgOffices").innerHTML=OFFICES.map(o=>`<button type="button" data-o="${esc(o)}">${esc(o)}</button>`).join("");
   $("#lgUser").value=""; $("#lgPass").value=""; $("#lgErr").textContent=""; }
-function applyOffice(){ const o=getOffice(); const tg=$("#officeTag"); tg.textContent=o?"📍 "+o:""; tg.hidden=!o; if(!o) showLogin(); else $("#login").hidden=true; }
+function applyOffice(){ const o=getOffice(); $("#officeTag").textContent=o?"📍 "+o:""; $("#officeBar").hidden=!o; if(!o) showLogin(); else $("#login").hidden=true; }
+function logoutOffice(){ if(!confirm("Выйти из киоска «"+getOffice()+"»?")) return; try{ localStorage.removeItem(OKEY); }catch(x){} clearAttract&&clearAttract(); applyOffice(); }
+$("#officeOut").addEventListener("click",logoutOffice);
 $("#lgOffices").addEventListener("click",e=>{ const b=e.target.closest("[data-o]"); if(!b) return;
   $$("#lgOffices button").forEach(x=>x.classList.toggle("on",x===b)); $("#lgUser").value="admin("+b.dataset.o+")"; $("#lgPass").focus(); });
 $("#lgForm").addEventListener("submit",e=>{ e.preventDefault();
@@ -761,7 +767,6 @@ $("#lgForm").addEventListener("submit",e=>{ e.preventDefault();
   if(!ok){ $("#lgErr").textContent="Неверный пароль"; $("#lgPass").value=""; return; }
   try{ localStorage.setItem(OKEY,o); }catch(x){}
   applyOffice(); goHome(); });
-(()=>{ let n=0,t=null; $("#officeTag").addEventListener("click",()=>{ clearTimeout(t); t=setTimeout(()=>n=0,2500); if(++n>=5){ n=0; if(confirm("Выйти из киоска «"+getOffice()+"»?")){ try{ localStorage.removeItem(OKEY); }catch(x){} applyOffice(); } } }); })();
 if(/[?&]logout\b/.test(location.search)){ try{ localStorage.removeItem(OKEY); }catch(x){} }
 
 function buildVisit(){
