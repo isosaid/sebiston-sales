@@ -65,6 +65,23 @@ button{cursor:pointer;border:0;background:none;text-align:inherit}
 #installBar button{border:0;border-radius:10px;padding:12px 16px;font:inherit;cursor:pointer}
 #installBar .ib-go{background:#27aa45;color:#fff}
 #installBar .ib-x{background:#eef0f4;color:#555;padding:12px 14px}
+/* ---------- вход в киоск: офис + пароль ---------- */
+#login{position:fixed;inset:0;z-index:300;background:radial-gradient(120% 90% at 50% 0%,#eaf6ee 0%,#f2f3f7 60%);display:grid;place-items:center;padding:20px;font-family:Inter,system-ui,sans-serif}
+#login[hidden]{display:none}
+.lg-card{width:min(520px,100%);background:#fff;border-radius:22px;padding:30px 30px 26px;box-shadow:0 20px 60px rgba(20,40,30,.14)}
+.lg-logo{width:58px;height:58px;border-radius:16px;background:var(--g);display:grid;place-items:center;box-shadow:0 8px 20px rgba(39,170,69,.3)}
+.lg-card h1{margin:18px 0 4px;font:700 26px/32px Inter,sans-serif;letter-spacing:-.5px;color:#1d1d1f}
+.lg-sub{margin:0 0 18px;color:#6b6f80;font:500 15px/20px Inter,sans-serif}
+.lg-offices{display:grid;grid-template-columns:1fr 1fr;gap:10px;margin-bottom:18px}
+.lg-offices button{text-align:center;border:1.5px solid #dfe1e8;background:#fff;border-radius:12px;padding:14px 10px;font:600 15px/18px Inter,sans-serif;color:#1d1d1f;cursor:pointer}
+.lg-offices button.on{border-color:var(--g);background:#eaf6ee;color:#14632f}
+.lg-l{display:block;font:500 14px/18px Inter,sans-serif;margin:0 0 7px;color:#1d1d1f}
+.lg-i{width:100%;height:54px;border:1px solid #e4e5ea;border-radius:12px;padding:0 16px;font:500 17px Inter,sans-serif;margin-bottom:14px;outline:none;box-sizing:border-box}
+.lg-i:focus{border-color:var(--g)}
+.lg-err{min-height:20px;margin:0 0 8px;color:#e5484d;font:500 14px Inter,sans-serif}
+.lg-btn{display:block;text-align:center;width:100%;height:58px;border:0;border-radius:12px;background:var(--g);color:#fff;font:700 18px Inter,sans-serif;cursor:pointer}
+#officeTag{position:fixed;left:14px;bottom:12px;z-index:50;background:rgba(0,0,0,.45);color:#fff;font:600 12.5px/1 Inter,sans-serif;padding:7px 11px;border-radius:999px;backdrop-filter:blur(6px);-webkit-backdrop-filter:blur(6px);user-select:none}
+#officeTag[hidden]{display:none}
 #swipeHint{position:fixed;top:14px;left:50%;white-space:nowrap;box-shadow:0 6px 20px rgba(0,0,0,.25);transform:translate(-50%,8px);z-index:50;background:rgba(37,37,37,.86);color:#fff;font:600 15px/1 Inter,sans-serif;padding:11px 18px;border-radius:22px;opacity:0;pointer-events:none;transition:opacity .3s,transform .3s}
 #swipeHint.on{opacity:1;transform:translate(-50%,0)}
 #frame{position:fixed;inset:0;overflow:hidden;overflow:clip;transition:transform .28s cubic-bezier(.2,.8,.2,1)}
@@ -307,6 +324,21 @@ html.m #dd .opt svg{top:17px}
 </head>
 <body>
 <div id="vk" aria-hidden="true"></div>
+<div id="login" hidden>
+  <form class="lg-card" id="lgForm" autocomplete="off">
+    <div class="lg-logo"><svg viewBox="0 0 24 24" width="30" height="30" fill="none" stroke="#fff" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M3 10.5 12 3l9 7.5"/><path d="M5 9.5V20h14V9.5"/><path d="M10 20v-5.5h4V20"/></svg></div>
+    <h1>Вход в киоск</h1>
+    <p class="lg-sub">Выберите офис, где стоит этот киоск</p>
+    <div class="lg-offices" id="lgOffices"></div>
+    <label class="lg-l" for="lgUser">Логин</label>
+    <input class="lg-i" id="lgUser" autocapitalize="off" spellcheck="false" placeholder="admin(Головной офис)">
+    <label class="lg-l" for="lgPass">Пароль</label>
+    <input class="lg-i" id="lgPass" type="password" placeholder="••••••">
+    <p class="lg-err" id="lgErr"></p>
+    <button class="lg-btn" type="submit">Войти</button>
+  </form>
+</div>
+<div id="officeTag" hidden></div>
 <div id="swipeHint" aria-hidden="true">↕ Проведите пальцем — другие поля</div>
 <div id="frame"><div id="stage">
 
@@ -708,6 +740,30 @@ const ROLE_RU={buyer:"Покупатель",client:"Клиент",broker:"Бро
 const QKEY="sebiston_visit_queue";
 const getQ=()=>{try{return JSON.parse(localStorage.getItem(QKEY)||"[]");}catch(e){return [];}};
 const setQ=q=>{try{localStorage.setItem(QKEY,JSON.stringify(q));}catch(e){}};
+/* ---------- вход в киоск: в каком офисе он стоит (каждый визит помечается офисом) ----------
+   Логины: admin(Головной офис), admin(Офис продаж), admin(Офис 92), admin(Офис 112). Выйти: ?logout или 5 касаний по метке офиса внизу слева. */
+const OFFICES=["Головной офис","Офис продаж","Офис 92","Офис 112"];
+const OFFICE_PW={"Головной офис":"YWRtaW4=","Офис продаж":"YWRtaW4=","Офис 92":"YWRtaW4=","Офис 112":"YWRtaW4="};   // пароли (base64)
+const OKEY="sebiston_kiosk_office";
+const getOffice=()=>{ try{ return localStorage.getItem(OKEY)||""; }catch(e){ return ""; } };
+function officeOfLogin(u){ const m=String(u||"").trim().toLowerCase().replace(/\s+/g," ").match(/^admin\s*\((.+)\)$/); if(!m) return "";
+  return OFFICES.find(o=>o.toLowerCase()===m[1].trim())||""; }
+function showLogin(){ const L=$("#login"); L.hidden=false; $("#officeTag").hidden=true;
+  $("#lgOffices").innerHTML=OFFICES.map(o=>`<button type="button" data-o="${esc(o)}">${esc(o)}</button>`).join("");
+  $("#lgUser").value=""; $("#lgPass").value=""; $("#lgErr").textContent=""; }
+function applyOffice(){ const o=getOffice(); const tg=$("#officeTag"); tg.textContent=o?"📍 "+o:""; tg.hidden=!o; if(!o) showLogin(); else $("#login").hidden=true; }
+$("#lgOffices").addEventListener("click",e=>{ const b=e.target.closest("[data-o]"); if(!b) return;
+  $$("#lgOffices button").forEach(x=>x.classList.toggle("on",x===b)); $("#lgUser").value="admin("+b.dataset.o+")"; $("#lgPass").focus(); });
+$("#lgForm").addEventListener("submit",e=>{ e.preventDefault();
+  const o=officeOfLogin($("#lgUser").value), pw=$("#lgPass").value;
+  if(!o){ $("#lgErr").textContent="Неверный логин. Пример: admin(Офис 92)"; return; }
+  let ok=false; try{ ok = btoa(unescape(encodeURIComponent(pw)))===OFFICE_PW[o]; }catch(x){}
+  if(!ok){ $("#lgErr").textContent="Неверный пароль"; $("#lgPass").value=""; return; }
+  try{ localStorage.setItem(OKEY,o); }catch(x){}
+  applyOffice(); goHome(); });
+(()=>{ let n=0,t=null; $("#officeTag").addEventListener("click",()=>{ clearTimeout(t); t=setTimeout(()=>n=0,2500); if(++n>=5){ n=0; if(confirm("Выйти из киоска «"+getOffice()+"»?")){ try{ localStorage.removeItem(OKEY); }catch(x){} applyOffice(); } } }); })();
+if(/[?&]logout\b/.test(location.search)){ try{ localStorage.removeItem(OKEY); }catch(x){} }
+
 function buildVisit(){
   const ru=T.ru, isReg = role!=="buyer" && (role==="client" || mode==="reg");
   const goal = data.goal!=null ? ru.goals[role][data.goal] : "";
@@ -727,7 +783,7 @@ function buildVisit(){
     /* плоская запись для листа «Визиты» */
     v:{ id, at:new Date(now.getTime()-now.getTimezoneOffset()*60000).toISOString().slice(0,19), role:ROLE_RU[role], mode:modeTxt, name:who,   /* at — местное время киоска */
         phone:"+992"+digits(data.phone), email:data.email.trim(),
-        jk:data.jk.slice(), goal, agency:data.agency.trim(), company:data.company.trim(), dir, lang:lang.toUpperCase(),
+        jk:data.jk.slice(), goal, agency:data.agency.trim(), company:data.company.trim(), dir, lang:lang.toUpperCase(), office:getOffice(),
         /* анкету киоск больше не отправляет — её заполняют по отдельной ссылке, ответы не затираются */ },
     fields:{ TITLE:"Визит в офис: "+ROLE_RU[role]+" — "+(who||phone), NAME:who,
       PHONE:[{VALUE:"+992"+digits(data.phone),VALUE_TYPE:"WORK"}],
@@ -837,7 +893,7 @@ let aT=null, aBroken=false;
 av.addEventListener("error",()=>{aBroken=true;},true);
 av.addEventListener("playing",()=>av.classList.add("live")); av.addEventListener("pause",()=>av.classList.remove("live"));
 function clearAttract(){ clearTimeout(aT); aT=null; }
-function armAttract(){ clearAttract(); if(aBroken||isM()) return;
+function armAttract(){ clearAttract(); if(aBroken||isM()||!getOffice()) return;
   aT=setTimeout(()=>{ if(!$("#form").classList.contains("on") || formDirty()) return;
     ao.classList.add("on");
     const p=av.play(); if(p&&p.catch) p.catch(()=>{});                 // сразу играет локальный ролик (без кнопок)…
@@ -886,6 +942,7 @@ function formDirty(){ return !!(data.name||data.phone||data.email||data.agency||
   Object.values(data.quiz).some(a=>a.length)) || $("#dd").classList.contains("on"); }
 ["pointerdown","keydown","input"].forEach(ev=>document.addEventListener(ev,()=>{ if(!ao.classList.contains("on")) armAttract(); },{passive:true}));
 armAttract();
+applyOffice();
 
 /* language */
 function setLang(l){ lang=l; document.documentElement.lang=l==="tg"?"tg":"ru";
