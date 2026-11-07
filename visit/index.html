@@ -1116,7 +1116,7 @@ function fit(){ if(typing() && Math.abs(innerWidth-baseW)<2){ keepFocusedVisible
   const phone = w<760 || (h<540 && w<1000) || h>w*1.1;      // phones & portrait tablets: flowing layout; landscape kiosk: exact design
   document.documentElement.classList.toggle("m",phone);
   if(phone){ st.style.width=st.style.height=st.style.transform=""; clearAttract(); return; }
-  const SIDE_EXTRA=110;                         // левая колонка с видео шире макета на ~2 см
+  const SIDE_EXTRA=230;                         // левая колонка с видео шире макета на ~2 см
   const s=Math.min(w/(1377+SIDE_EXTRA),h/1025), W=w/s, H=h/s; st.style.width=W+"px"; st.style.height=H+"px"; st.style.transform=`scale(${s})`;
   st.style.setProperty("--dx",(W-1377)+"px"); st.style.setProperty("--dy",(H-1025)+"px"); mountYT(); sizeYT(); sizeYTA(); }
 addEventListener("resize",fit); addEventListener("orientationchange",()=>{ fit(); setTimeout(fit,250); setTimeout(fit,800); });
