@@ -116,6 +116,17 @@ input[aria-invalid="true"]{border-color:var(--red);background:var(--red-soft)}
 #p-visits .vgrid{display:grid;grid-template-columns:repeat(auto-fit,minmax(300px,1fr));gap:0 32px}
 #p-visits .vform .actions{position:static;margin:4px -22px 0;padding:14px 22px;border-top:1px solid var(--line)}
 #p-visits .vadd{margin-left:auto}
+#p-visits .cc-quiz{background:var(--card);border-radius:14px;margin:8px 2px 2px;padding:16px 24px 18px}
+#p-visits .cc-quiz.empty{color:var(--ink-3);font-size:14px;padding:14px 24px}
+#p-visits .cq-h{font-size:15px;font-weight:700;margin-bottom:12px;display:flex;align-items:center;gap:10px}
+#p-visits .cq-h span{font-size:12.5px;font-weight:700;color:var(--green);background:var(--green-soft);border-radius:999px;padding:3px 10px}
+#p-visits .cq-g{display:grid;grid-template-columns:repeat(auto-fill,minmax(210px,1fr));gap:12px 22px}
+#p-visits .cq-q{display:flex;gap:8px;align-items:flex-start;font-size:13.5px;color:var(--ink-2);margin-bottom:7px;line-height:1.35}
+#p-visits .cq-q b{flex:none;width:20px;height:20px;border-radius:50%;background:var(--green);color:#fff;font-size:11px;display:grid;place-items:center}
+#p-visits .cq-i.no .cq-q b{background:#C3C8CF}
+#p-visits .cq-a{display:flex;flex-wrap:wrap;gap:6px;padding-left:28px}
+#p-visits .cq-a span{background:var(--green-soft);color:var(--ink);border:1px solid #CFE8D7;border-radius:8px;padding:5px 10px;font-size:13.5px;font-weight:600}
+#p-visits .cq-a i{color:var(--ink-3);font-style:normal;font-size:13.5px}
 #p-visits .otabs{display:flex;flex-wrap:wrap;gap:8px;margin:0 0 14px;align-items:center}
 #p-visits .osearch{font-size:13.5px;font-weight:600;color:var(--ink-3);margin-right:2px}
 #p-visits .otabs button.zero{opacity:.45}
@@ -1530,6 +1541,16 @@ function initVisits(root){
       return !!cid && (String(d.buyer||"")+" "+String(d.note||"")).toUpperCase().indexOf(cid)>=0;
     }).sort(function(a,b){ return String(a.date||"").localeCompare(String(b.date||"")); });
   }
+  /* анкета о квартире — отдельным блоком, как в самой анкете: вопрос и ответы */
+  var QUIZ_Q=[["district","В каком районе планируете купить квартиру?"],["rooms","Тип квартиры"],["area","Предпочтительная площадь"],["floor","На каком этаже вы бы хотели жить?"],["source","Откуда вы узнали о нас?"]];
+  function quizBlock(v){
+    var n=QUIZ_Q.filter(function(q){ return String(v[q[0]]||"").trim(); }).length;
+    if(!n) return v.role==="Покупатель" ? '<div class="cc-quiz empty">📝 Анкета о квартире не заполнена</div>' : '';
+    return '<div class="cc-quiz"><div class="cq-h">📝 Анкета о квартире <span>'+n+' из '+QUIZ_Q.length+'</span></div><div class="cq-g">'+
+      QUIZ_Q.map(function(q,i){ var a=String(v[q[0]]||"").split(/,\s*(?![^()]*\))/).map(function(x){return x.trim();}).filter(Boolean);
+        return '<div class="cq-i'+(a.length?'':' no')+'"><div class="cq-q"><b>'+(i+1)+'</b>'+esc(q[1])+'</div><div class="cq-a">'+
+          (a.length?a.map(function(x){ return '<span>'+esc(x)+'</span>'; }).join(""):'<i>нет ответа</i>')+'</div></div>'; }).join("")+'</div></div>';
+  }
   function saleLine(v){ return [v.sobj, v.stype, v.sblock?"блок "+v.sblock:"", v.sapt?"кв. "+v.sapt:"", v.sfloor?v.sfloor+" этаж":""].filter(Boolean).join(" · "); }
   /* все покупки клиента: отмеченные на визитах + сделки из «Продаж» (без дублей) */
   function salesOf(H){
@@ -1732,11 +1753,10 @@ function initVisits(root){
             '<div class="cc-b">'+
               fld("Что сделал / цель визита", v.goal?'<b>'+esc(v.goal)+'</b>':'') +
               fld("Интересующие ЖК", esc(v.jk||"")) +
-              fld(v.role==="Брокер"?"Агентство":(v.role==="Партнёр"?"Компания · направление":"Анкета: район · тип · площадь · этаж"),
-                  v.role==="Брокер"?esc(v.agency||""):(v.role==="Партнёр"?[v.company,v.dir].filter(Boolean).map(esc).join(" · "):quiz(v))) +
+              (v.role==="Брокер"?fld("Агентство",esc(v.agency||"")):(v.role==="Партнёр"?fld("Компания · направление",[v.company,v.dir].filter(Boolean).map(esc).join(" · ")):"")) +
               offF+noteF+
               (v.sale?fld(v.sale==="Бронь"?"Бронь на этом визите":"Продажа на этом визите", '<b>'+esc(saleLine(v))+'</b>'+(v.stotal?' · '+esc(money(num(v.stotal))):'')):'')+
-            '</div></section>';
+            '</div>'+quizBlock(v)+'</section>';
         }).join("")+
         (cq?'<span class="cid-note">поиск по ID — за всё время</span>':'');
     }
