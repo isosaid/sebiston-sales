@@ -980,10 +980,10 @@ const YT_ID="cdsMdnKXPkk", YT_RATIO=1;         // ролик квадратны�
    сверху и снизу — размытый фон из того же кадра-фото */
 function sizeYT(){ const f=$("#yt"), sd=$("#side"); if(!f||!sd) return;
   const w=sd.offsetWidth, h=sd.offsetHeight;
-  /* ролик крупнее: ~72% высоты колонки (края по бокам слегка обрезаются), больше места забирает вверх, чуть меньше — вниз */
-  let H=Math.min(h, Math.max(w/YT_RATIO, h*VIDEO_H)), W=H*YT_RATIO;
-  placeYT(f,W,H,(w-W)/2,(h-H)*0.38); }
-const VIDEO_H=0.72;
+  /* ролик на всю высоту колонки (по размеру экрана); края по бокам обрезаются, +3% — чтобы не было тонких чёрных полос по краям кадра */
+  const H=Math.max(h*VIDEO_H, w/YT_RATIO)*1.03, W=H*YT_RATIO;
+  placeYT(f,W,H,(w-W)/2,(h-H)/2); }
+const VIDEO_H=1;
 /* сцена масштабируется (transform), поэтому плееру даём настоящий размер в пикселях экрана и уменьшаем обратно —
    YouTube выбирает качество по размеру плеера, так он грузит HD, а не маленькую версию */
 function stageScale(){ const m=/scale\(([\d.]+)\)/.exec($("#stage").style.transform||""); return m?parseFloat(m[1]):1; }
