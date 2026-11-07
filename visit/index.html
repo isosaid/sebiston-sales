@@ -916,8 +916,8 @@ const YT_PARAMS="?autoplay=1&mute=1&loop=1&controls=0&disablekb=1&fs=0&iv_load_p
 function makeYT(id){
   const f=document.createElement("iframe"); f.id=id; f.title="Sebiston"; f.tabIndex=-1; f.setAttribute("aria-hidden","true");
   f.allow="autoplay; encrypted-media"; f.referrerPolicy="strict-origin-when-cross-origin";
-  /* сначала обычный youtube.com; при повторной попытке — youtube-nocookie (на некоторых сетях работает только один из них) */
-  const host=((makeYT._tries||{})[id]||0)%2 ? "https://www.youtube-nocookie.com" : "https://www.youtube.com";
+  /* сначала youtube-nocookie (по журналу киоска стартует сразу), при повторной попытке — youtube.com */
+  const host=((makeYT._tries||{})[id]||0)%2 ? "https://www.youtube.com" : "https://www.youtube-nocookie.com";
   f.src=host+"/embed/"+YT_ID+YT_PARAMS+"&playlist="+YT_ID+"&origin="+encodeURIComponent(location.origin);
   const cmd=(func,args)=>{ try{ f.contentWindow.postMessage(JSON.stringify({event:"command",func,args:args||[]}),"*"); }catch(e){} };
   f.addEventListener("load",()=>{ ytLog(id+": плеер загружен"); let n=0; const ping=setInterval(()=>{   // подписка на события плеера + принудительный запуск
@@ -927,9 +927,9 @@ function makeYT(id){
   /* сторож: если за 20 с ролик так и не заиграл — пересоздаём плеер (до 3 раз), фото слева остаётся */
   f._tries=(makeYT._tries=(makeYT._tries||{}))[id]||0;
   setTimeout(()=>{ if(f.isConnected && !f._shown && !f._err){
-      ytLog(id+": не заиграл за 20 с (события: "+(f._ev||"нет")+")");
+      ytLog(id+": не заиграл за 12 с (события: "+(f._ev||"нет")+")");
       if((makeYT._tries[id]=(makeYT._tries[id]||0)+1)<=3){ const p=f.parentNode, nf=makeYT(id); nf.style.cssText=f.style.cssText; p.replaceChild(nf,f); }
-    } },20000);
+    } },12000);
   return f;
 }
 const HDQ=/^(hd720|hd1080|hd1440|hd2160|highres)$/;
