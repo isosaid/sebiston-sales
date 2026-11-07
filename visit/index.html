@@ -716,18 +716,20 @@ function bind(){
 let ddKey=null;
 function openDD(k,anchor){
   ddKey=k; const L=T[lang];
-  const title = k==="jk"?L.jk_title : k==="goal"?L.goal_title : L.dir_title;
+  /* у покупателя первая строка списка целей — «Недвижимость»: её можно выбрать, она же закрывает список */
+  const headPick = k==="goal" && role==="buyer";
+  const title = headPick ? L.goals[role][0] : k==="jk"?L.jk_title : k==="goal"?L.goal_title : L.dir_title;
   const items = k==="jk"?JK : k==="goal"?L.goals[role] : L.dirs;
   const sel=i=> k==="jk"?data.jk.includes(JK[i]) : k==="goal"?data.goal===i : data.dir===i;
   const dd=$("#dd");
   dd.innerHTML=`<div class="hd" id="ddOk">${esc(title)}<span class="ok">${CHECK_DD}</span></div>`+
-    items.map((n,i)=>`<div role="option" tabindex="0" class="opt${sel(i)?" sel":""}" data-i="${i}">${esc(n)}${CHECK_DD}</div>`).join("");
-  const h = 21+16+13+items.length*41+12;
+    items.map((n,i)=> headPick&&i===0 ? "" : `<div role="option" tabindex="0" class="opt${sel(i)?" sel":""}" data-i="${i}">${esc(n)}${CHECK_DD}</div>`).join("");
+  const h = 21+16+13+(items.length-(headPick?1:0))*41+12;
   const wr=anchor.closest(".wrap").getBoundingClientRect(), ar=anchor.getBoundingClientRect(), sc=wr.width/anchor.closest(".wrap").offsetWidth||1;
   const top = Math.max(10, Math.min((ar.top-wr.top)/sc, 1025-10-h));
   dd.style.left="500px"; dd.style.top=top+"px";
   dd.classList.add("on"); $("#ddCatch").classList.add("on");
-  $("#ddOk").addEventListener("click",closeDD);
+  $("#ddOk").addEventListener("click",()=>{ if(headPick){ data.goal=0; } closeDD(); });
   $$("#dd .opt").forEach(b=>b.addEventListener("click",()=>{
     const i=+b.dataset.i;
     if(k==="jk"){ const n=JK[i]; data.jk=data.jk.includes(n)?data.jk.filter(x=>x!==n):[...data.jk,n]; b.classList.toggle("sel"); }
