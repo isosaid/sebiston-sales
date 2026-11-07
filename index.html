@@ -116,7 +116,9 @@ input[aria-invalid="true"]{border-color:var(--red);background:var(--red-soft)}
 #p-visits .vgrid{display:grid;grid-template-columns:repeat(auto-fit,minmax(300px,1fr));gap:0 32px}
 #p-visits .vform .actions{position:static;margin:4px -22px 0;padding:14px 22px;border-top:1px solid var(--line)}
 #p-visits .vadd{margin-left:auto}
-#p-visits .otabs{display:flex;flex-wrap:wrap;gap:8px;margin:0 0 14px}
+#p-visits .otabs{display:flex;flex-wrap:wrap;gap:8px;margin:0 0 14px;align-items:center}
+#p-visits .osearch{font-size:13.5px;font-weight:600;color:var(--ink-3);margin-right:2px}
+#p-visits .otabs button.zero{opacity:.45}
 #p-visits .otabs button{appearance:none;display:inline-flex;align-items:center;gap:8px;border:1px solid var(--line);background:var(--card);border-radius:12px;padding:11px 16px;font:inherit;font-size:14.5px;font-weight:600;color:var(--ink-2);cursor:pointer}
 #p-visits .otabs button i{width:8px;height:8px;border-radius:50%;background:var(--green);opacity:.45}
 #p-visits .otabs button b{font-size:12.5px;background:var(--bg,#F2F3F0);color:var(--ink-3);border-radius:999px;padding:2px 8px;min-width:22px;text-align:center}
@@ -1507,11 +1509,13 @@ function initVisits(root){
   /* ---------- офисы: вкладки «Все / Головной офис / Офис продаж / Офис 92 / Офис 112» ---------- */
   var OFFICE=lsGet("sb_vis_office")||"";
   function drawOfficeTabs(){
-    var F=flt.get(), cnt={}, all=0;
-    ROWS.forEach(function(v){ var d=String(v.at||"").slice(0,10); if(!inRange(d,F.from,F.to)) return; all++; cnt[v.office||""]=(cnt[v.office||""]||0)+1; });
+    var F=flt.get(), cnt={}, all=0, searching=!!String(F.q||"").trim();
+    (searching ? pick() : ROWS.filter(function(v){ return inRange(String(v.at||"").slice(0,10),F.from,F.to); }))
+      .forEach(function(v){ all++; cnt[v.office||""]=(cnt[v.office||""]||0)+1; });
     var tabs=[["","Все офисы",all]].concat(VIS_OFFICES.map(function(o){ return [o,o,cnt[o]||0]; }));
     if(cnt[""]) tabs.push(["—","Без офиса",cnt[""]]);
-    f(root,"otabs").innerHTML=tabs.map(function(t){ return '<button type="button" role="tab" data-office="'+esc(t[0])+'" aria-selected="'+(t[0]===OFFICE?"true":"false")+'">'+
+    f(root,"otabs").classList.toggle("searching",searching);
+    f(root,"otabs").innerHTML=(searching?'<span class="osearch">🔎 Поиск по всем офисам:</span>':'')+tabs.map(function(t){ return '<button type="button" role="tab" data-office="'+esc(t[0])+'" aria-selected="'+((searching?t[0]==="":t[0]===OFFICE)?"true":"false")+'"'+(searching&&t[0]&&!t[2]?' class="zero"':'')+'>'+
       (t[0]&&t[0]!=="—"?'<i></i>':'')+esc(t[1])+' <b>'+t[2]+'</b></button>'; }).join("");
   }
   function officeOk(v){ return !OFFICE || (OFFICE==="—" ? !v.office : v.office===OFFICE); }
@@ -1563,7 +1567,7 @@ function initVisits(root){
     var F=flt.get(), q=normTxt(F.q||"").trim(), cid=idQuery(F.q);
     if(cid) return ROWS.filter(function(v){ return String(v.cid||"").toUpperCase()===cid; });
     return ROWS.filter(function(v){
-      if(!officeOk(v)) return false;
+      if(!q && !officeOk(v)) return false;                // поиск идёт по всем офисам сразу
       var d=String(v.at||"").slice(0,10);
       if(!inRange(d, F.from, F.to)) return false;
       if(!q) return true;
@@ -1630,7 +1634,8 @@ function initVisits(root){
   }
   root.addEventListener("click", function(ev){
     var ot=ev.target.closest('[data-f="otabs"] [data-office]');
-    if(ot){ OFFICE=ot.dataset.office; lsSet("sb_vis_office",OFFICE); if(!editing && f(root,"vform").hidden) gset(root,"voffice",OFFICE==="—"?"":OFFICE); draw(); return; }
+    if(ot){ OFFICE=ot.dataset.office; lsSet("sb_vis_office",OFFICE);
+      var qi=f(root,"q"); if(qi && qi.value.trim()){ qi.value=""; qi.dispatchEvent(new Event("input",{bubbles:true})); } if(!editing && f(root,"vform").hidden) gset(root,"voffice",OFFICE==="—"?"":OFFICE); draw(); return; }
     var vb=ev.target.closest('[data-f="vview"] button'), gb=ev.target.closest('[data-f="vgroup"] button');
     if(vb){ VIEW=vb.dataset.v; lsSet("sb_vis_view",VIEW); draw(); return; }
     if(gb){ GROUP=gb.dataset.v; lsSet("sb_vis_group",GROUP); draw(); return; }
