@@ -914,7 +914,9 @@ const YT_PARAMS="?autoplay=1&mute=1&loop=1&controls=0&disablekb=1&fs=0&iv_load_p
 function makeYT(id){
   const f=document.createElement("iframe"); f.id=id; f.title="Sebiston"; f.tabIndex=-1; f.setAttribute("aria-hidden","true");
   f.allow="autoplay; encrypted-media"; f.referrerPolicy="strict-origin-when-cross-origin";
-  f.src="https://www.youtube-nocookie.com/embed/"+YT_ID+YT_PARAMS+"&playlist="+YT_ID+"&origin="+encodeURIComponent(location.origin);
+  /* сначала обычный youtube.com; при повторной попытке — youtube-nocookie (на некоторых сетях работает только один из них) */
+  const host=((makeYT._tries||{})[id]||0)%2 ? "https://www.youtube-nocookie.com" : "https://www.youtube.com";
+  f.src=host+"/embed/"+YT_ID+YT_PARAMS+"&playlist="+YT_ID+"&origin="+encodeURIComponent(location.origin);
   const cmd=(func,args)=>{ try{ f.contentWindow.postMessage(JSON.stringify({event:"command",func,args:args||[]}),"*"); }catch(e){} };
   f.addEventListener("load",()=>{ ytLog(id+": плеер загружен"); let n=0; const ping=setInterval(()=>{   // подписка на события плеера + принудительный запуск
       try{ f.contentWindow.postMessage(JSON.stringify({event:"listening",id,channel:"widget"}),"*"); }catch(e){}
