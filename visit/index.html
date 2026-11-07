@@ -823,7 +823,8 @@ if(/[?&]diag\b/.test(location.search)) addEventListener("load",()=>{
       "<br><b>В очереди (не отправлено):</b> "+getQ().length+"<br><b>Онлайн:</b> "+navigator.onLine+
       "<br><br><button id='dgT' style='padding:12px 18px;border-radius:10px;background:#27aa45;color:#fff;font-weight:700'>Отправить тестовый визит</button> "+
       "<button id='dgF' style='padding:12px 18px;border-radius:10px;background:#eee;font-weight:700'>Досылать очередь</button>"+
-      "<br><br><b>Последние ответы сервера:</b><br>"+JSON.parse(localStorage.getItem("sebiston_send_log")||"[]").map(x=>"• "+esc(x)).join("<br>");
+      "<br><br><b>Последние ответы сервера:</b><br>"+JSON.parse(localStorage.getItem("sebiston_send_log")||"[]").map(x=>"• "+esc(x)).join("<br>")+
+      "<br><br><b>Видео YouTube:</b><br>"+(JSON.parse(localStorage.getItem("sebiston_yt_log")||"[]").map(x=>"• "+esc(x)).join("<br>")||"— событий нет");
     d.querySelector("#dgT").onclick=async()=>{ const id="diag-"+Date.now(); const v={id,sent:{},v:{id,at:new Date(Date.now()-new Date().getTimezoneOffset()*6e4).toISOString().slice(0,19),role:"Покупатель",mode:"",name:"ТЕСТ диагностика — удалить",phone:"+992000000000",email:"",jk:["ADDRESS Residence"],goal:"Проверка",agency:"",company:"",dir:"",lang:"RU",district:"Центр",rooms:"2-комнатная",area:"50–70 м²",floor:"до 9 этажа",source:"Instagram | Социальные сети"}};
       await sendSheets(v); show(); };
     d.querySelector("#dgF").onclick=async()=>{ await flush(); show(); }; };
@@ -915,18 +916,26 @@ function makeYT(id){
   f.allow="autoplay; encrypted-media"; f.referrerPolicy="strict-origin-when-cross-origin";
   f.src="https://www.youtube-nocookie.com/embed/"+YT_ID+YT_PARAMS+"&playlist="+YT_ID+"&origin="+encodeURIComponent(location.origin);
   const cmd=(func,args)=>{ try{ f.contentWindow.postMessage(JSON.stringify({event:"command",func,args:args||[]}),"*"); }catch(e){} };
-  f.addEventListener("load",()=>{ let n=0; const ping=setInterval(()=>{               // подписка на события плеера + принудительный запуск
+  f.addEventListener("load",()=>{ ytLog(id+": плеер загружен"); let n=0; const ping=setInterval(()=>{   // подписка на события плеера + принудительный запуск
       try{ f.contentWindow.postMessage(JSON.stringify({event:"listening",id,channel:"widget"}),"*"); }catch(e){}
       cmd("mute"); cmd("setPlaybackQuality",["highres"]); cmd("setPlaybackQuality",["hd1080"]); cmd("playVideo");
-      if(++n>10||f.classList.contains("live")) clearInterval(ping); },700); });
+      if(++n>45||f._shown||!f.isConnected) clearInterval(ping); },700); });
+  /* сторож: если за 20 с ролик так и не заиграл — пересоздаём плеер (до 3 раз), фото слева остаётся */
+  f._tries=(makeYT._tries=(makeYT._tries||{}))[id]||0;
+  setTimeout(()=>{ if(f.isConnected && !f._shown && !f._err){
+      ytLog(id+": не заиграл за 20 с (события: "+(f._ev||"нет")+")");
+      if((makeYT._tries[id]=(makeYT._tries[id]||0)+1)<=3){ const p=f.parentNode, nf=makeYT(id); nf.style.cssText=f.style.cssText; p.replaceChild(nf,f); }
+    } },20000);
   return f;
 }
 const HDQ=/^(hd720|hd1080|hd1440|hd2160|highres)$/;
+/* журнал видео — смотреть на странице ?diag */
+function ytLog(m){ try{ const L=JSON.parse(localStorage.getItem("sebiston_yt_log")||"[]"); L.unshift(new Date().toLocaleTimeString("ru")+" — "+m); localStorage.setItem("sebiston_yt_log",JSON.stringify(L.slice(0,20))); }catch(e){} }
 /* показываем ролик только когда YouTube уже играет в HD (или через 5 с, если качество не сообщил) — без мутной картинки в начале */
 function ytPlaying(f){ if(!f||f._shown) return;
   if(!HDQ.test(f._q||"") && !f._waitHD){ f._waitHD=Date.now(); }
   if(!HDQ.test(f._q||"") && Date.now()-f._waitHD<5000){ clearTimeout(f._hdT); f._hdT=setTimeout(()=>ytPlaying(f),300); return; }
-  f._shown=true;
+  f._shown=true; ytLog(f.id+": показан ("+(f._q||"качество неизвестно")+")");
   setTimeout(()=>{ f.classList.add("live");
     if(f.id==="yt"){ const sd=$("#side"); if(sd) sd.classList.add("yt"); }
     if(f.id==="ytA") setTimeout(()=>{ if(f.isConnected) av.pause(); },900); },1200); }
@@ -934,10 +943,12 @@ addEventListener("message",e=>{ if(!/youtube/.test(e.origin)) return;
   const f=[$("#yt"),$("#ytA")].find(x=>x&&x.contentWindow===e.source); if(!f) return;
   try{ const d=typeof e.data==="string"?JSON.parse(e.data):e.data;
     const st = d.event==="onStateChange" ? d.info : (d.event==="infoDelivery"&&d.info&&typeof d.info.playerState==="number" ? d.info.playerState : null);
-    if(d.info && typeof d.info.playbackQuality==="string") f._q=d.info.playbackQuality;
+    if(!f._ev) ytLog(f.id+": связь с плеером есть");
+    f._ev=(f._ev||0)+1;
+    if(d.info && typeof d.info.playbackQuality==="string"){ if(f._q!==d.info.playbackQuality) ytLog(f.id+": качество "+d.info.playbackQuality); f._q=d.info.playbackQuality; }
     if(d.event==="onPlaybackQualityChange" && typeof d.info==="string") f._q=d.info;
     if(st===1) ytPlaying(f);
-    if(d.event==="onError"){ if(f.id==="ytA"){ ytBad=true; } f.remove(); if(f.id==="yt"){ const sd=$("#side"); if(sd) sd.classList.remove("yt"); } }
+    if(d.event==="onError"){ f._err=true; ytLog(f.id+": ошибка YouTube "+d.info+(d.info==150||d.info==101?" (владелец запретил встраивание)":d.info==153?" (YouTube не принял адрес сайта)":"")); if(f.id==="ytA"){ ytBad=true; } f.remove(); if(f.id==="yt"){ const sd=$("#side"); if(sd) sd.classList.remove("yt"); } }
   }catch(_){} });
 function mountYTA(){ if($("#ytA")) return; const f=makeYT("ytA"); ao.insertBefore(f,ao.firstChild); sizeYTA(); }
 function sizeYTA(){ const f=$("#ytA"); if(!f) return; const w=ao.offsetWidth, h=ao.offsetHeight+140;
