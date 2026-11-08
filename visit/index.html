@@ -218,6 +218,7 @@ html.m #body .otpmsg{position:static;width:auto;margin:-8px 0 16px}
 .flow .lab{position:static;margin:0 0 16px}
 .flow .box{position:relative;display:block;left:auto!important;top:auto!important;width:100%!important}
 .flow .fcol{margin-bottom:25px}
+.lab .hint{font-weight:500;color:#2f9446;font-size:.86em}
 .frow{display:grid;grid-template-columns:394px 392px;gap:0 11px}
 .flowfade{position:absolute;left:482px;top:796px;width:835px;height:68px;border-radius:0 0 10px 10px;pointer-events:none;
   background:linear-gradient(rgba(255,255,255,0),#fff 70%);display:flex;align-items:flex-end;justify-content:center;padding-bottom:10px;transition:opacity .25s}
@@ -405,6 +406,9 @@ ru:{
  name:"Имя и фамилия", name_ph:"Как к вам обращаться", phone:"Телефон", code:"Подтвердите", code_btn:"Подтвердить",
  email:"E-mail", email_ph:"Введите свой email", email_ph2:"Введите e-mail", email_opt:"E-mail (необязательно)",
  jk:"Интересующие ЖК", jk_ph:"Выберите жилой комплекс", jk_title:"Выберите ЖК",
+ dept:"Куда направить", dept_ph:"Выберите отдел", dept_title:"Куда направить", dept_hint:"подсказка по цели визита",
+ whom:"Кому", whom_ph:"Имя сотрудника, если знаете",
+ depts:["Отдел продаж","Касса","Бухгалтерия","Оформление договоров","Приёмка квартир и выдача ключей","Гарантийная служба","Управляющая компания «Себистон Сервис»","Администратор ресепшена"],
  goal:"Цель визита", goal_ph:"Выберите цель визита", goal_title:"Выберите цель визита",
  agency:"Агентство недвижимости", agency_ph:"Название агентства",
  company:"Компания / Организация", company_ph:"Название компании",
@@ -449,6 +453,9 @@ tg:{
  name:"Ном ва насаб", name_ph:"Чӣ тавр муроҷиат кунем", phone:"Телефон", code:"Тасдиқ кунед", code_btn:"Тасдиқ кардан",
  email:"E-mail", email_ph:"E-mail-и худро ворид кунед", email_ph2:"E-mail-ро ворид кунед", email_opt:"E-mail (ихтиёрӣ)",
  jk:"Маҷмааҳои мавриди таваҷҷӯҳ", jk_ph:"Маҷмааи манзилиро интихоб кунед", jk_title:"Маҷмаъро интихоб кунед",
+ dept:"Ба куҷо равона кардан", dept_ph:"Шӯъбаро интихоб кунед", dept_title:"Ба куҷо равона кардан", dept_hint:"тавсия аз рӯи мақсади ташриф",
+ whom:"Ба кӣ", whom_ph:"Номи корманд, агар медонед",
+ depts:["Шӯъбаи фурӯш","Касса","Муҳосибот","Ба расмият даровардани шартномаҳо","Қабули квартираҳо ва супоридани калидҳо","Хадамоти кафолатӣ","Ширкати идоракунандаи «Себистон Сервис»","Маъмури ресепшн"],
  goal:"Мақсади ташриф", goal_ph:"Мақсади ташрифро интихоб кунед", goal_title:"Мақсади ташрифро интихоб кунед",
  agency:"Агентии амволи ғайриманқул", agency_ph:"Номи агентӣ",
  company:"Ширкат / Созмон", company_ph:"Номи ширкат",
@@ -494,7 +501,7 @@ let profile=null, otpReq=null, otpMsg="", otpBad=false, otpTimer=null;
 function stopOtpPoll(){ if(otpTimer){ clearInterval(otpTimer); otpTimer=null; } }
 let lang="ru", role="buyer", mode="new", verified=false, codeSent=false, tried=false;
 let data={};
-const reset=()=>{data={name:"",phone:"",email:"",agency:"",company:"",code:"",jk:[],goal:null,dir:null,quiz:{district:[],rooms:[],area:[],floor:[],source:[]}};verified=false;codeSent=false;tried=false;profile=null;otpReq=null;otpMsg="";otpBad=false;stopOtpPoll();};
+const reset=()=>{data={name:"",phone:"",email:"",agency:"",company:"",code:"",jk:[],goal:null,dir:null,dept:null,deptAuto:false,whom:"",quiz:{district:[],rooms:[],area:[],floor:[],source:[]}};verified=false;codeSent=false;tried=false;profile=null;otpReq=null;otpMsg="";otpBad=false;stopOtpPoll();};
 reset();
 const t=k=>T[lang][k];
 const esc=s=>String(s).replace(/[&<>"]/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;'}[c]));
@@ -508,11 +515,16 @@ const CHECK_DD='<svg viewBox="0 0 18 20" fill="none"><path d="M1.6 10.6c1.6 1.4 
 
 /* ---------- layouts: exact positions from the design, per role and mode ---------- */
 const F=(k,lab,inp,x=501,w=797,h=71)=>({k,lab,inp,x,w,h});
+/* цель визита покупателя → куда направить (подсказка, можно поменять):
+   Недвижимость, Помогите выбрать → Отдел продаж; Внести оплату → Касса; Сверить платежи → Бухгалтерия; Оформить договор → Оформление договоров;
+   Получить ключи → Приёмка квартир; Заявка по гарантии → Гарантийная служба; Вопрос по дому → УК; Встреча с сотрудником → Администратор ресепшена */
+const GOAL_DEPT=[0,1,2,3,4,5,6,7,0];
+const RECEPTION=7;
 function layout(){
   const L={card:null,items:[],note:null,locked:false,submitOff:false};
   if(role==="buyer"){
     L.card=[285,579];
-    L.items=[F("name",329,361,501,394),F("phone",329,361,906,392),F("email",459,492,501,797,72),F("goal",589,622),F("jk",717,750)];
+    L.items=[F("name",329,361,501,394),F("phone",329,361,906,392),F("email",459,492,501,797,72),F("goal",589,622),F("jk",717,750),F("dept",0,0),F("whom",0,0)];
     L.note={y:882,x:495,k:"consent"};
     return L;
   }
@@ -569,8 +581,8 @@ function bad(k){
 function field(f,locked){
   const lockMe = locked && (f.k==="jk"||f.k==="goal"||f.k==="email");
   const off = lockMe ? " off":"";
-  const lab = {name:"name",phone:"phone",vphone:"phone",code:"code",email:"email",agency:"agency",company:"company",jk:"jk",goal:"goal",dir:"dir"}[f.k];
-  let h=`<div class="lab${lockMe?" off":""}" style="left:${f.x}px;top:${f.lab}px">${t(lab)}</div>`;
+  const lab = {name:"name",phone:"phone",vphone:"phone",code:"code",email:"email",agency:"agency",company:"company",jk:"jk",goal:"goal",dir:"dir",dept:"dept",whom:"whom"}[f.k];
+  let h=`<div class="lab${lockMe?" off":""}" style="left:${f.x}px;top:${f.lab}px">${t(lab)}${f.k==="dept"&&data.deptAuto&&data.dept!=null?` <span class="hint">· ${t("dept_hint")}</span>`:""}</div>`;
   const st=`left:${f.x}px;top:${f.inp}px;width:${f.w}px;height:${f.h}px`;
   const inp=(id,val,ph,type="text",extra="")=>`<div class="box${off}${bad(f.k)} ${extra}" style="${st}"><input id="${id}" type="${type}" autocomplete="off" placeholder="${esc(ph)}" value="${esc(val)}"></div>`;
   switch(f.k){
@@ -578,10 +590,11 @@ function field(f,locked){
     case "email": h+=inp("i_email",data.email,role==="buyer"?t("email_ph"):(emailNeed()?t("email_ph2"):t("email_opt")),"text").replace("<input ","<input inputmode=\"email\" autocapitalize=\"off\" spellcheck=\"false\" "); break;
     case "agency": h+=inp("i_agency",data.agency,t("agency_ph")); break;
     case "company": h+=inp("i_company",data.company,t("company_ph")); break;
+    case "whom": h+=inp("i_whom",data.whom,t("whom_ph")); break;
     case "phone": case "vphone": h+=phoneBox(f,off); break;
     case "code": h+=`<div class="box code" style="${st}"><input id="i_code" type="text" inputmode="numeric" autocomplete="one-time-code" maxlength="4" placeholder="••••" value="${esc(data.code)}"></div>`; break;
-    case "jk": case "goal": case "dir": {
-      const val = f.k==="jk" ? data.jk.join(", ") : f.k==="goal" ? (data.goal!=null?T[lang].goals[role][data.goal]:"") : (data.dir!=null?T[lang].dirs[data.dir]:"");
+    case "jk": case "goal": case "dir": case "dept": {
+      const val = f.k==="jk" ? data.jk.join(", ") : f.k==="goal" ? (data.goal!=null?T[lang].goals[role][data.goal]:"") : f.k==="dept" ? (data.dept!=null?T[lang].depts[data.dept]:"") : (data.dir!=null?T[lang].dirs[data.dir]:"");
       const ph = t(f.k+"_ph");
       h+=`<button type="button" class="box pick${off}${bad(f.k)}" data-pick="${f.k}" style="${st}">${val?`<span class="val">${esc(val)}</span>`:`<span class="ph">${ph}</span>`}${CHEV}</button>`;
     }
@@ -599,9 +612,12 @@ function render(){
   const prevFlow=$("#flow"), keepScroll=prevFlow?prevFlow.scrollTop:0;
   let h=`<div class="abs card" style="top:${L.card[0]}px;height:${L.card[1]}px"></div>`;
   if(role==="buyer"){
-    const [fn,fp,fe,fj,fg]=L.items;
+    const [fn,fp,fe,fj,fg,fd,fw]=L.items, rec=data.dept===RECEPTION;
     h+=`<div class="flow" id="flow"><div class="frow"><div class="fcol">${field(fn)}</div><div class="fcol">${field(fp)}</div></div>`+
-       [fe,fj,fg].map(f=>`<div class="fcol">${field(f)}</div>`).join("")+`</div>`;      // анкета о квартире вынесена на отдельную страницу /anketa/
+       `<div class="fcol">${field(fe)}</div>`+
+       `<div class="frow"><div class="fcol">${field(fj)}</div><div class="fcol">${field(fd)}</div></div>`+       // цель визита | куда направить
+       (rec ? `<div class="frow"><div class="fcol">${field(fg)}</div><div class="fcol">${field(fw)}</div></div>`   // ЖК | кому (для ресепшена)
+            : `<div class="fcol">${field(fg)}</div>`)+`</div>`;      // анкета о квартире вынесена на отдельную страницу /anketa/
     L.items=[];
   }
   for(const f of L.items){
@@ -676,6 +692,7 @@ function bind(){
   on("#i_email",e=>{data.email=e.target.value;clr(e);});
   on("#i_agency",e=>{data.agency=e.target.value;clr(e);});
   on("#i_company",e=>{data.company=e.target.value;clr(e);});
+  on("#i_whom",e=>{data.whom=e.target.value;});
   on("#i_code",e=>{data.code=e.target.value;clr(e);});
   const ph=$("#i_phone");
   if(ph){
@@ -718,9 +735,9 @@ function openDD(k,anchor){
   ddKey=k; const L=T[lang];
   /* у покупателя первая строка списка целей — «Недвижимость»: её можно выбрать, она же закрывает список */
   const headPick = k==="goal" && role==="buyer";
-  const title = headPick ? L.goals[role][0] : k==="jk"?L.jk_title : k==="goal"?L.goal_title : L.dir_title;
-  const items = k==="jk"?JK : k==="goal"?L.goals[role] : L.dirs;
-  const sel=i=> k==="jk"?data.jk.includes(JK[i]) : k==="goal"?data.goal===i : data.dir===i;
+  const title = headPick ? L.goals[role][0] : k==="jk"?L.jk_title : k==="goal"?L.goal_title : k==="dept"?L.dept_title : L.dir_title;
+  const items = k==="jk"?JK : k==="goal"?L.goals[role] : k==="dept"?L.depts : L.dirs;
+  const sel=i=> k==="jk"?data.jk.includes(JK[i]) : k==="goal"?data.goal===i : k==="dept"?data.dept===i : data.dir===i;
   const dd=$("#dd");
   dd.innerHTML=`<div class="hd" id="ddOk">${esc(title)}<span class="ok">${CHECK_DD}</span></div>`+
     items.map((n,i)=> headPick&&i===0 ? "" : `<div role="option" tabindex="0" class="opt${sel(i)?" sel":""}" data-i="${i}">${esc(n)}${CHECK_DD}</div>`).join("");
@@ -729,13 +746,15 @@ function openDD(k,anchor){
   const top = Math.max(10, Math.min((ar.top-wr.top)/sc, 1025-10-h));
   dd.style.left="500px"; dd.style.top=top+"px";
   dd.classList.add("on"); $("#ddCatch").classList.add("on");
-  $("#ddOk").addEventListener("click",()=>{ if(headPick){ data.goal=0; } closeDD(); });
+  $("#ddOk").addEventListener("click",()=>{ if(headPick){ setGoal(0); } closeDD(); });
   $$("#dd .opt").forEach(b=>b.addEventListener("click",()=>{
     const i=+b.dataset.i;
     if(k==="jk"){ const n=JK[i]; data.jk=data.jk.includes(n)?data.jk.filter(x=>x!==n):[...data.jk,n]; b.classList.toggle("sel"); }
-    else { if(k==="goal") data.goal=i; else data.dir=i; closeDD(); }
+    else { if(k==="goal") setGoal(i); else if(k==="dept"){ data.dept=i; data.deptAuto=false; } else data.dir=i; closeDD(); }
   }));
 }
+/* выбор цели — у покупателя сразу подсказываем, куда направить (если отдел не выбран вручную) */
+function setGoal(i){ data.goal=i; if(role==="buyer" && (data.dept==null||data.deptAuto)){ data.dept=GOAL_DEPT[i]??0; data.deptAuto=true; } }
 function closeDD(){ $("#dd").classList.remove("on"); $("#ddCatch").classList.remove("on"); ddKey=null; render(); }
 $("#ddCatch").addEventListener("click",closeDD);
 
@@ -795,6 +814,7 @@ function buildVisit(){
     v:{ id, at:new Date(now.getTime()-now.getTimezoneOffset()*60000).toISOString().slice(0,19), role:ROLE_RU[role], mode:modeTxt, name:who,   /* at — местное время киоска */
         phone:"+992"+digits(data.phone), email:data.email.trim(),
         jk:data.jk.slice(), goal, agency:data.agency.trim(), company:data.company.trim(), dir, lang:lang.toUpperCase(), office:getOffice(), acc:getOffice()?"admin("+getOffice()+")":"",
+        dept:(role==="buyer"&&data.dept!=null)?ru.depts[data.dept]:"", whom:(role==="buyer"&&data.dept===RECEPTION)?data.whom.trim():"",
         /* анкету киоск больше не отправляет — её заполняют по отдельной ссылке, ответы не затираются */ },
     fields:{ TITLE:"Визит в офис: "+ROLE_RU[role]+" — "+(who||phone), NAME:who,
       PHONE:[{VALUE:"+992"+digits(data.phone),VALUE_TYPE:"WORK"}],
