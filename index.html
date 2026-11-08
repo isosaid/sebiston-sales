@@ -1432,7 +1432,7 @@ function initVisits(root){
       company:v.company, dir:v.dir, lang:v.lang, upAt:v.upAt||"", upBy:v.upBy||"",
       district:v.district||"", rooms:v.rooms||"", area:v.area||"", floor:v.floor||"", source:v.source||"",
       cid:v.cid||"", cmgr:v.cmgr||"",
-      office:v.office||"", acc:v.acc||"", sale:v.sale||"", sobj:v.sobj||"", stype:v.stype||"", sblock:v.sblock||"", sapt:v.sapt||"", sfloor:v.sfloor||"", stotal:v.stotal||"" };
+      office:v.office||"", acc:v.acc||"", sale:v.sale||"", sobj:v.sobj||"", stype:v.stype||"", sblock:v.sblock||"", sapt:v.sapt||"", sfloor:v.sfloor||"", stotal:v.stotal||"", dept:v.dept||"", whom:v.whom||"" };
   }
   function normAt(a){
     if(!a) return "";
@@ -1592,7 +1592,7 @@ function initVisits(root){
       var d=String(v.at||"").slice(0,10);
       if(!inRange(d, F.from, F.to)) return false;
       if(!q) return true;
-      return normTxt([v.office,v.cid,v.cmgr,v.name,v.phone,v.role,v.jk,v.goal,v.company,v.agency,v.dir,v.email,v.district,v.rooms,v.area,v.floor,v.source].join(" ")).indexOf(q)>=0;
+      return normTxt([v.office,v.cid,v.cmgr,v.name,v.phone,v.role,v.jk,v.goal,v.dept,v.whom,v.company,v.agency,v.dir,v.email,v.district,v.rooms,v.area,v.floor,v.source].join(" ")).indexOf(q)>=0;
     });
   }
   /* ---------- клиентская база: карточки клиентов в колонках ---------- */
@@ -1752,6 +1752,7 @@ function initVisits(root){
               '<button type="button" class="btn btn-ghost btn-sm" data-edit="'+esc(v.id)+'">изменить</button></header>'+
             '<div class="cc-b">'+
               fld("Что сделал / цель визита", v.goal?'<b>'+esc(v.goal)+'</b>':'') +
+              fld("Куда направили", v.dept?esc(v.dept)+(v.whom?' — <b>'+esc(v.whom)+'</b>':''):'') +
               fld("Интересующие ЖК", esc(v.jk||"")) +
               (v.role==="Брокер"?fld("Агентство",esc(v.agency||"")):(v.role==="Партнёр"?fld("Компания · направление",[v.company,v.dir].filter(Boolean).map(esc).join(" · ")):"")) +
               offF+noteF+
@@ -1774,7 +1775,7 @@ function initVisits(root){
       rr.map(function(v){
         return '<tr'+(v.id===editing?' class="editing"':'')+'><td style="white-space:nowrap">'+esc(v.at)+vUpd(v)+'</td><td style="white-space:nowrap">'+esc(v.office||"—")+'</td><td style="white-space:nowrap;font-weight:600">'+(v.cid?'<button type="button" class="lnk cidlnk" data-cid="'+esc(v.cid)+'" title="Все визиты клиента">'+esc(v.cid)+'</button>':'—')+'</td><td style="white-space:nowrap">'+nBadge(v)+(v._tot>1?' <span class="vt">из '+v._tot+'</span>':'')+'</td><td>'+esc(v.role)+'</td><td>'+esc(v.mode||"—")+'</td>'+
         '<td>'+esc(v.name||"—")+'</td><td>'+esc(v.cmgr||"—")+'</td><td class="wrap" style="min-width:230px">'+(v.sale?'<span class="vn sl">'+esc(v.sale)+'</span> '+esc(saleLine(v))+(v.stotal?' · <b>'+esc(money(num(v.stotal)))+'</b>':''):"—")+'</td><td style="white-space:nowrap"><a href="tel:'+esc(String(v.phone||"").replace(/[^0-9+]/g,""))+'">'+esc(v.phone||"—")+'</a></td>'+
-        '<td class="wrap">'+esc(v.email||"—")+'</td><td class="wrap">'+esc(v.jk||"—")+'</td><td class="wrap">'+esc(v.goal||"—")+'</td>'+
+        '<td class="wrap">'+esc(v.email||"—")+'</td><td class="wrap">'+esc(v.jk||"—")+'</td><td class="wrap">'+esc(v.goal||"—")+(v.dept?'<div style="font-size:12px;color:var(--ink-3);margin-top:2px">➡ '+esc(v.dept)+(v.whom?' — '+esc(v.whom):'')+'</div>':'')+'</td>'+
         '<td class="wrap">'+esc(v.district||"—")+'</td><td class="wrap">'+esc(v.rooms||"—")+'</td><td class="wrap">'+esc(v.area||"—")+'</td><td class="wrap">'+esc(v.floor||"—")+'</td><td class="wrap">'+esc(v.source||"—")+'</td>'+
         '<td>'+esc(v.agency||"—")+'</td><td>'+esc(v.company||"—")+'</td><td class="wrap">'+esc(v.dir||"—")+'</td><td>'+esc(v.lang||"—")+'</td>'+
         '<td class="rowact"><button class="lnk ed" data-edit="'+esc(v.id)+'">изменить</button>'+(canDelete()?'<button class="lnk" data-del="'+esc(v.id)+'">удалить</button>':'')+'</td></tr>';
@@ -1802,10 +1803,10 @@ function initVisits(root){
     var g=flt.get();
     var meta=[["Период",periodLabel(g.from,g.to)],["Всего визитов",rr.length]]; if(g.q.trim()) meta.push(["Поиск",g.q.trim()]);
     var cols=[{h:"Дата/время",w:16},{h:"Офис",w:14},{h:"Аккаунт",w:16},{h:"ID клиента",w:11},{h:"Визит №",w:8,t:"n"},{h:"Роль",w:12},{h:"Режим",w:16},{h:"ФИО",w:20},{h:"Менеджер",w:14},{h:"Телефон",w:15},{h:"Email",w:20},
-      {h:"Интересующие ЖК",w:30},{h:"Цель визита",w:22},{h:"Продажа",w:10},{h:"Объект продажи",w:18},{h:"Тип недвижимости",w:14},{h:"Блок",w:6},{h:"Кв. №",w:6},{h:"Этаж",w:6},{h:"Сумма, $",w:12,t:"m"},{h:"Район",w:16},{h:"Тип квартиры",w:20},{h:"Площадь",w:14},{h:"Этаж",w:14},{h:"Откуда узнали",w:26},
+      {h:"Интересующие ЖК",w:30},{h:"Цель визита",w:22},{h:"Куда направить",w:24},{h:"Кому",w:16},{h:"Продажа",w:10},{h:"Объект продажи",w:18},{h:"Тип недвижимости",w:14},{h:"Блок",w:6},{h:"Кв. №",w:6},{h:"Этаж",w:6},{h:"Сумма, $",w:12,t:"m"},{h:"Район",w:16},{h:"Тип квартиры",w:20},{h:"Площадь",w:14},{h:"Этаж",w:14},{h:"Откуда узнали",w:26},
       {h:"Агентство",w:15},{h:"Компания",w:15},{h:"Направление",w:16},{h:"Язык",w:7}];
     numberVisits();
-    var rows=rr.map(function(v){ return [v.at,v.office||"",v.acc||"",v.cid||"",v._n||1,v.role,v.mode,v.name,v.cmgr||"",v.phone,v.email,v.jk,v.goal,v.sale||"",v.sobj||"",v.stype||"",v.sblock||"",v.sapt||"",v.sfloor||"",v.stotal?num(v.stotal):"",v.district||"",v.rooms||"",v.area||"",v.floor||"",v.source||"",v.agency,v.company,v.dir,v.lang]; });
+    var rows=rr.map(function(v){ return [v.at,v.office||"",v.acc||"",v.cid||"",v._n||1,v.role,v.mode,v.name,v.cmgr||"",v.phone,v.email,v.jk,v.goal,v.dept||"",v.whom||"",v.sale||"",v.sobj||"",v.stype||"",v.sblock||"",v.sapt||"",v.sfloor||"",v.stotal?num(v.stotal):"",v.district||"",v.rooms||"",v.area||"",v.floor||"",v.source||"",v.agency,v.company,v.dir,v.lang]; });
     return { title:"Визиты в офис", file:"Sebiston — Визиты — "+periodLabel(g.from,g.to), meta:meta, signLeft:"Составил",
       kpis:[["всего визитов",rr.length]],
       tables:[{sheet:"Визиты",heading:"Визиты в офис",cols:cols,rows:rows}] };

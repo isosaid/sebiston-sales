@@ -361,7 +361,8 @@ var VISIT_HEAD = ['Дата/время','Роль','Режим','ФИО','Тел
                   'Район','Тип квартиры','Площадь','Этаж','Откуда узнали',
                   'ID клиента','Менеджер клиента',
                   'Продажа','Объект продажи','Тип недвижимости','Блок','Квартира №','Этаж','Сумма, $',
-                  'Офис','Аккаунт'];                                                 // 30 — офис, 31 — кто внёс (admin(Офис 92) с киоска или сотрудник на сайте)
+                  'Офис','Аккаунт',                                                  // 30 — офис, 31 — кто внёс (admin(Офис 92) с киоска или сотрудник на сайте)
+                  'Куда направить','Кому'];                                          // 32 — отдел, куда направили покупателя, 33 — к кому (для ресепшена)
 var OFFICES = ['Головной офис','Офис продаж','Офис 92','Офис 112'];
 var VISIT_SALE = ['sale','sobj','stype','sblock','sapt','sfloor','stotal'];   // продажа на визите → колонки 23–29
 var VISIT_QUIZ = ['district','rooms','area','floor','source'];   // поля анкеты → колонки 16–20
@@ -370,7 +371,7 @@ var VISIT_QUIZ = ['district','rooms','area','floor','source'];   // поля а�
    данные хранятся в одном месте, а каждый офис видит свои визиты на своём листе. */
 function officeSheets_(){
   var props = PropertiesService.getScriptProperties();
-  if (props.getProperty('OFFICE_SHEETS') === 'v1') return;
+  if (props.getProperty('OFFICE_SHEETS') === 'v2') return;
   var ss = SpreadsheetApp.getActive();
   var lastCol = columnLetter_(VISIT_HEAD.length), offCol = columnLetter_(VISIT_HEAD.indexOf('Офис') + 1);
   OFFICES.forEach(function(o){
@@ -381,7 +382,7 @@ function officeSheets_(){
     sh.setFrozenRows(1);
     sh.getRange(1, 1, 1, VISIT_HEAD.length).setBackground('#0E6D23').setFontColor('#FFFFFF').setFontWeight('bold');
   });
-  props.setProperty('OFFICE_SHEETS', 'v1');
+  props.setProperty('OFFICE_SHEETS', 'v2');
 }
 function columnLetter_(n){ var s = ''; while (n > 0) { var m = (n - 1) % 26; s = String.fromCharCode(65 + m) + s; n = Math.floor((n - 1) / 26); } return s; }
 
@@ -438,6 +439,7 @@ function saveVisit_(v){
     }
     if (cid || mgr) sh.getRange(found, 21, 1, 2).setValues([[cid, mgr]]);
     if (v.office || v.acc) sh.getRange(found, 30, 1, 2).setValues([[String(v.office || ''), String(v.acc || '')]]);
+    if (v.dept || v.whom) sh.getRange(found, 32, 1, 2).setValues([[String(v.dept || ''), String(v.whom || '')]]);
     if (Object.prototype.hasOwnProperty.call(v, 'sale'))
       sh.getRange(found, 23, 1, VISIT_SALE.length).setValues([VISIT_SALE.map(function(k){ return v.sale ? (v[k] == null ? '' : v[k]) : ''; })]);
     SpreadsheetApp.flush();
@@ -669,7 +671,8 @@ function listVisits_(){
              floor:String(r[18]||''), source:String(r[19]||''),
              cid:String(r[20]||''), cmgr:String(r[21]||''),
              sale:String(r[22]||''), sobj:String(r[23]||''), stype:String(r[24]||''), sblock:String(r[25]||''),
-             sapt:String(r[26]||''), sfloor:String(r[27]||''), stotal:String(r[28]||''), office:String(r[29]||''), acc:String(r[30]||'') };
+             sapt:String(r[26]||''), sfloor:String(r[27]||''), stotal:String(r[28]||''), office:String(r[29]||''), acc:String(r[30]||''),
+             dept:String(r[31]||''), whom:String(r[32]||'') };
   });
 }
 function delVisit_(id){
@@ -752,6 +755,7 @@ function notifyManager_(mgr, v, cid, isNewClient, origin, hist, office){
     (v.office ? '📍 ' + htmlEsc_(v.office) + '\n' : '') +
     (v.role ? '🏷 ' + htmlEsc_(v.role) + (v.mode ? ' · ' + htmlEsc_(v.mode) : '') + '\n' : '') +
     (v.goal ? '🎯 ' + htmlEsc_(v.goal) + '\n' : '') +
+    (v.dept ? '➡️ Направить: <b>' + htmlEsc_(v.dept) + '</b>' + (v.whom ? ' — ' + htmlEsc_(v.whom) : '') + '\n' : '') +
     (jk ? '🏠 ' + htmlEsc_(jk) + '\n' : '') +
     '\n' + historyText_(hist || [], String(v.id || '')) +
     dealsText_(v.phone) +
