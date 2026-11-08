@@ -226,6 +226,11 @@ html.m #body .otpmsg{position:static;width:auto;margin:-8px 0 16px}
 .box.tip .tx.mut{color:#8a938e;font-size:.92em}
 .box.tip.on{background:#eef7f0;border:1.5px solid #bfe0c7}
 .box.tip.on .ic{background:#2f9446;color:#fff}
+.box.tip.whom{pointer-events:auto}
+.box.tip.whom .tx{flex:1}
+.box.tip.whom .tx b{font-size:14px}
+.box.tip.whom input{all:unset;box-sizing:border-box;width:100%;margin-top:4px;padding:3px 0;font-size:15px;color:#111;border-bottom:1.5px solid #bfe0c7;cursor:text}
+.box.tip.whom input::placeholder{color:#8a938e}
 .frow{display:grid;grid-template-columns:394px 392px;gap:0 11px}
 .flowfade{position:absolute;left:482px;top:796px;width:835px;height:68px;border-radius:0 0 10px 10px;pointer-events:none;
   background:linear-gradient(rgba(255,255,255,0),#fff 70%);display:flex;align-items:flex-end;justify-content:center;padding-bottom:10px;transition:opacity .25s}
@@ -500,6 +505,8 @@ tg:{
   broker:["Сабти мизоҷ","Интихоби квартира барои мизоҷ","Ҳамроҳӣ кардани мизоҷ","Муҳокимаи шартҳои ҳамкорӣ","Равшан кардани мавҷудияти квартираҳо ва нархҳо","Брон кардани квартира","Муҳокимаи созиши амалкунанда","Тартиб додан ё имзо кардани ҳуҷҷатҳо","Мулоқот бо роҳбарият"],
   partner:["Муҳокимаи ҳамкорӣ","Мулоқот оид ба лоиҳаи амалкунанда","Муҳокимаи чорабинӣ ё сарпарастӣ","Супоридан ё имзо кардани ҳуҷҷатҳо"]}
 }};
+/* один список целей визита для всех вкладок (покупатель, клиент, брокер, партнёр) */
+for(const l of ["ru","tg"]) for(const r of ["client","broker","partner"]) T[l].goals[r]=T[l].goals.buyer;
 const JK=["Бульвар Скандинавия","ADDRESS Residence","Varzob Riviera","GissarMall","Ахрори"];
 
 /* ---------- state ---------- */
@@ -526,6 +533,7 @@ const F=(k,lab,inp,x=501,w=797,h=71)=>({k,lab,inp,x,w,h});
    Недвижимость, Помогите выбрать → Отдел продаж; Внести оплату → Касса; Сверить платежи → Бухгалтерия; Оформить договор → Оформление договоров;
    Получить ключи → Приёмка квартир; Заявка по гарантии → Гарантийная служба; Вопрос по дому → УК; Встреча с сотрудником → Администратор ресепшена */
 const GOAL_DEPT=[0,1,2,3,4,5,6,7,0];
+const G=(lab,inp)=>[F("goal",lab,inp,501,394),F("dept",lab,inp,906,392)];   // цель визита | куда направить (подсказка)
 const RECEPTION=7;
 function layout(){
   const L={card:null,items:[],note:null,locked:false,submitOff:false};
@@ -537,30 +545,30 @@ function layout(){
   }
   if(role==="client"){
     L.card=[285,579];
-    if(!verified){ L.items=[F("vphone",329,361,501,392),F("code",329,361,906,392),{k:"confirm",y:466},F("goal",589,622),F("jk",717,750,501,394),F("email",717,750,906,392)];
+    if(!verified){ L.items=[F("vphone",329,361,501,392),F("code",329,361,906,392),{k:"confirm",y:466},...G(589,622),F("jk",717,750,501,394),F("email",717,750,906,392)];
       L.locked=true; L.submitOff=true; L.note={y:883,k:"consent",c:1}; }
-    else { L.items=[{k:"person",y:329},{k:"pline",y:530},F("goal",589,622),F("jk",717,750,501,394),F("email",717,750,906,392)]; L.note={y:883,k:"visible",c:1}; }
+    else { L.items=[{k:"person",y:329},{k:"pline",y:530},...G(589,622),F("jk",717,750,501,394),F("email",717,750,906,392)]; L.note={y:883,k:"visible",c:1}; }
     return L;
   }
   // broker / partner
   const last = role==="broker" ? "jk" : "goal";
   if(mode==="reg" && role==="broker"){          // брокер «уже зарегистрирован» — как клиент: ЖК + цель визита
     L.card=[368,506];
-    if(!verified){ L.items=[F("vphone",395,427,501,392),F("code",395,427,906,392),{k:"confirm",y:518},F("goal",628,660),F("jk",751,783,501,394),F("email",751,783,906,392)];
+    if(!verified){ L.items=[F("vphone",395,427,501,392),F("code",395,427,906,392),{k:"confirm",y:518},...G(628,660),F("jk",751,783,501,394),F("email",751,783,906,392)];
       L.locked=true; L.submitOff=true; }
-    else L.items=[{k:"person",y:388},{k:"pline",y:569},F("goal",615,647),F("jk",743,775,501,394),F("email",743,775,906,392)];
+    else L.items=[{k:"person",y:388},{k:"pline",y:569},...G(615,647),F("jk",743,775,501,394),F("email",743,775,906,392)];
     L.note={y:888,k:"consent",c:1};
   } else if(mode==="reg"){
     L.card=[368,476];
-    if(!verified){ L.items=[F("vphone",424,456,501,392),F("code",424,456,906,392),{k:"confirm",y:561},F(last,684,717)];
+    if(!verified){ L.items=[F("vphone",424,456,501,392),F("code",424,456,906,392),{k:"confirm",y:561},...(last==="goal"?G(684,717):[F(last,684,717)])];
       L.locked=true; L.submitOff=true; }
-    else L.items=[{k:"person",y:401},{k:"pline",y:610},F(last,678,711)];
+    else L.items=[{k:"person",y:401},{k:"pline",y:610},...(last==="goal"?G(678,711):[F(last,678,711)])];
     L.note={y:873,k:"consent",c:1};
   } else {
     L.card=[368,538];
     L.items = role==="broker"
-      ? [F("name",391,423,501,394),F("phone",391,423,906,392),F("agency",521,554,501,394,72),F("email",521,554,906,392,72),F("goal",651,684),F("jk",779,812)]
-      : [F("name",391,423,501,394),F("phone",391,423,906,392),F("company",521,554,501,394,72),F("email",521,554,906,394,72),F("dir",651,684),F("goal",779,812)];
+      ? [F("name",391,423,501,394),F("phone",391,423,906,392),F("agency",521,554,501,394,72),F("email",521,554,906,392,72),...G(651,684),F("jk",779,812)]
+      : [F("name",391,423,501,394),F("phone",391,423,906,392),F("company",521,554,501,394,72),F("email",521,554,906,394,72),F("dir",651,684),...G(779,812)];
   }
   return L;
 }
@@ -602,6 +610,11 @@ function field(f,locked){
     case "code": h+=`<div class="box code" style="${st}"><input id="i_code" type="text" inputmode="numeric" autocomplete="one-time-code" maxlength="4" placeholder="••••" value="${esc(data.code)}"></div>`; break;
     case "dept": {
       const on=data.dept!=null;
+      if(on && data.dept===RECEPTION && role!=="buyer"){
+        h+=`<div class="box tip on whom" style="${st}"><span class="ic">➜</span><span class="tx"><b>${esc(T[lang].depts[data.dept])}</b>`+
+           `<input id="i_whom" type="text" autocomplete="off" placeholder="${t("whom")}: ${t("whom_ph").toLowerCase()}" value="${esc(data.whom)}"></span></div>`;
+        break;
+      }
       h+=`<div class="box tip${on?" on":""}" style="${st}"><span class="ic">${on?"➜":"ℹ︎"}</span>`+
          (on?`<span class="tx"><b>${esc(T[lang].depts[data.dept])}</b><small>${t("dept_hint")}</small></span>`:`<span class="tx mut">${t("dept_ph")}</span>`)+`</div>`;
       break;
@@ -747,7 +760,7 @@ let ddKey=null;
 function openDD(k,anchor){
   ddKey=k; const L=T[lang];
   /* у покупателя первая строка списка целей — «Недвижимость»: её можно выбрать, она же закрывает список */
-  const headPick = k==="goal" && role==="buyer";
+  const headPick = k==="goal";
   const title = headPick ? L.goals[role][0] : k==="jk"?L.jk_title : k==="goal"?L.goal_title : k==="dept"?L.dept_title : L.dir_title;
   const items = k==="jk"?JK : k==="goal"?L.goals[role] : k==="dept"?L.depts : L.dirs;
   const sel=i=> k==="jk"?data.jk.includes(JK[i]) : k==="goal"?data.goal===i : k==="dept"?data.dept===i : data.dir===i;
@@ -767,7 +780,7 @@ function openDD(k,anchor){
   }));
 }
 /* выбор цели — у покупателя сразу подсказываем, куда направить (если отдел не выбран вручную) */
-function setGoal(i){ data.goal=i; if(role==="buyer"){ data.dept=GOAL_DEPT[i]??0; data.deptAuto=true; } }
+function setGoal(i){ data.goal=i; data.dept=GOAL_DEPT[i]??0; data.deptAuto=true; }
 function closeDD(){ $("#dd").classList.remove("on"); $("#ddCatch").classList.remove("on"); ddKey=null; render(); }
 $("#ddCatch").addEventListener("click",closeDD);
 
@@ -827,7 +840,7 @@ function buildVisit(){
     v:{ id, at:new Date(now.getTime()-now.getTimezoneOffset()*60000).toISOString().slice(0,19), role:ROLE_RU[role], mode:modeTxt, name:who,   /* at — местное время киоска */
         phone:"+992"+digits(data.phone), email:data.email.trim(),
         jk:data.jk.slice(), goal, agency:data.agency.trim(), company:data.company.trim(), dir, lang:lang.toUpperCase(), office:getOffice(), acc:getOffice()?"admin("+getOffice()+")":"",
-        dept:(role==="buyer"&&data.dept!=null)?ru.depts[data.dept]:"", whom:(role==="buyer"&&data.dept===RECEPTION)?data.whom.trim():"",
+        dept:data.dept!=null?ru.depts[data.dept]:"", whom:data.dept===RECEPTION?data.whom.trim():"",
         /* анкету киоск больше не отправляет — её заполняют по отдельной ссылке, ответы не затираются */ },
     fields:{ TITLE:"Визит в офис: "+ROLE_RU[role]+" — "+(who||phone), NAME:who,
       PHONE:[{VALUE:"+992"+digits(data.phone),VALUE_TYPE:"WORK"}],
