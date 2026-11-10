@@ -846,7 +846,7 @@ function buildVisit(){
     v:{ id, at:new Date(now.getTime()-now.getTimezoneOffset()*60000).toISOString().slice(0,19), role:ROLE_RU[role], mode:modeTxt, name:who,   /* at — местное время киоска */
         phone:"+992"+digits(data.phone), email:data.email.trim(),
         jk:data.jk.slice(), goal, agency:data.agency.trim(), company:data.company.trim(), dir, lang:lang.toUpperCase(), office:getOffice(), acc:getOffice()?"admin("+getOffice()+")":"",
-        dept:data.dept!=null?ru.depts[data.dept]:"", whom:data.dept===RECEPTION?data.whom.trim():"",
+        dept:data.dept!=null?ru.depts[data.dept]:(data.goal!=null?ru.depts[GOAL_DEPT[data.goal]??0]:""), whom:data.dept===RECEPTION?data.whom.trim():"",
         /* анкету киоск больше не отправляет — её заполняют по отдельной ссылке, ответы не затираются */ },
     fields:{ TITLE:"Визит в офис: "+ROLE_RU[role]+" — "+(who||phone), NAME:who,
       PHONE:[{VALUE:"+992"+digits(data.phone),VALUE_TYPE:"WORK"}],
