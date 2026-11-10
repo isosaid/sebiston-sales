@@ -136,6 +136,15 @@ input[aria-invalid="true"]{border-color:var(--red);background:var(--red-soft)}
 #p-visits .otabs button[aria-selected="true"]{background:var(--green);border-color:var(--green);color:#fff}
 #p-visits .otabs button[aria-selected="true"] i{background:#fff;opacity:1}
 #p-visits .otabs button[aria-selected="true"] b{background:rgba(255,255,255,.22);color:#fff}
+#p-visits .dtabs{display:flex;flex-wrap:wrap;gap:6px;margin:-4px 0 16px;align-items:center}
+#p-visits .dtabs .dt-l{font-size:13px;font-weight:700;color:var(--ink-3);margin-right:4px}
+#p-visits .dtabs button{appearance:none;display:inline-flex;align-items:center;gap:7px;border:1px solid var(--line);background:var(--card);border-radius:999px;padding:7px 12px;font:inherit;font-size:13.5px;font-weight:600;color:var(--ink-2);cursor:pointer}
+#p-visits .dtabs button b{font-size:12px;background:var(--green-soft);color:var(--green);border-radius:999px;padding:1px 7px;min-width:20px;text-align:center}
+#p-visits .dtabs button.zero{opacity:.5}
+#p-visits .dtabs button.zero b{background:var(--bg,#F2F3F0);color:var(--ink-3)}
+#p-visits .dtabs button[aria-selected="true"]{background:var(--ink,#1B1F1C);border-color:var(--ink,#1B1F1C);color:#fff;opacity:1}
+#p-visits .dtabs button[aria-selected="true"] b{background:rgba(255,255,255,.2);color:#fff}
+@media (max-width:700px){ #p-visits .dtabs{flex-wrap:nowrap;overflow-x:auto;padding-bottom:4px} #p-visits .dtabs button{white-space:nowrap} }
 @media (max-width:700px){ #p-visits .otabs{flex-wrap:nowrap;overflow-x:auto;padding-bottom:4px} #p-visits .otabs button{white-space:nowrap} }
 #p-visits .vsale{border-top:1px solid var(--line);padding-top:16px;margin-top:4px}
 #p-visits .vsale-row{display:grid;grid-template-columns:repeat(4,minmax(0,1fr));gap:12px;margin-bottom:12px}
@@ -1339,12 +1348,10 @@ function initVisits(root){
   var VIS_JK=["Бульвар Скандинавия","ADDRESS Residence","Varzob Riviera","GissarMall","Ахрори"];
   var VIS_OFFICES=["Головной офис","Офис продаж","Офис 92","Офис 112"];
   var VIS_DIRS=["Спортивное партнёрство","Медиа и информационное партнерство","Коммерческое сотрудничество","Подрядчик или поставщик","Инвестиционное сотрудничество"];
-  var VIS_GOALS={
-    "Покупатель":["Недвижимость","Внести оплату","Сверить платежи","Оформить договор","Получить ключи","Заявка по гарантии","Вопрос по дому","Встреча с сотрудником","Помогите выбрать"],
-    "Клиент":["Уточнить информацию по покупке","Обсудить график или внести оплату","Получить или оформить документы","Узнать о ходе строительства","Покупка новой квартиры","Встретиться с менеджером"],
-    "Брокер":["Зарегистрировать клиента","Подобрать квартиру для клиента","Сопроводить клиента","Обсудить условия сотрудничества","Уточнить наличие квартир и цены","Забронировать квартиру","Обсудить действующую сделку","Оформить или подписать документы","Встреча с руководством"],
-    "Партнёр":["Обсудить сотрудничество","Встреча по действующему проекту","Обсудить мероприятие или спонсорство","Передать или подписать документы"]
-  };
+  var VIS_GOAL_LIST=["Недвижимость","Внести оплату","Сверить платежи","Оформить договор","Получить ключи","Заявка по гарантии","Вопрос по дому","Встреча с сотрудником","Помогите выбрать"];
+  var VIS_GOALS={"Покупатель":VIS_GOAL_LIST,"Клиент":VIS_GOAL_LIST,"Брокер":VIS_GOAL_LIST,"Партнёр":VIS_GOAL_LIST};
+  /* куда киоск направил посетителя — по цели визита */
+  var VIS_DEPTS=["Отдел продаж","Касса","Бухгалтерия","Оформление договоров","Приёмка квартир и выдача ключей","Гарантийная служба","Управляющая компания «Себистон Сервис»","Администратор ресепшена"];
   function visAllGoals(){ var s=[]; Object.keys(VIS_GOALS).forEach(function(r){ VIS_GOALS[r].forEach(function(g){ if(s.indexOf(g)<0) s.push(g); }); }); return s; }
 
   root.innerHTML =
@@ -1401,6 +1408,7 @@ function initVisits(root){
   filterBarHTML("ID клиента (SB-10001), имя, телефон, роль, ЖК, цель…", '<button type="button" class="btn btn-main btn-sm vadd" data-f="vadd">+ Добавить визит</button>'+expBtns())+
   '<div class="cidcard" data-f="cidcard" hidden></div>'+
   '<div class="stats" data-f="stats"></div>'+
+  '<div class="dtabs" data-f="dtabs" role="tablist" aria-label="Куда направили"></div>'+
   '<div class="vbar"><div class="vseg" data-f="vview" role="group" aria-label="Вид">'+
     '<button type="button" data-v="cards">Клиентская база</button><button type="button" data-v="table">Таблица визитов</button></div>'+
     '<div class="vseg" data-f="vgroup" role="group" aria-label="Колонки"><span>Колонки:</span>'+
@@ -1654,6 +1662,8 @@ function initVisits(root){
     }).join("");
   }
   root.addEventListener("click", function(ev){
+    var dt=ev.target.closest('[data-f="dtabs"] [data-dept]');
+    if(dt){ DEPT=dt.dataset.dept; lsSet("sb_vis_dept",DEPT); draw(); return; }
     var ot=ev.target.closest('[data-f="otabs"] [data-office]');
     if(ot){ OFFICE=ot.dataset.office; lsSet("sb_vis_office",OFFICE);
       var qi=f(root,"q"); if(qi && qi.value.trim()){ qi.value=""; qi.dispatchEvent(new Event("input",{bubbles:true})); } if(!editing && f(root,"vform").hidden) gset(root,"voffice",OFFICE==="—"?"":OFFICE); draw(); return; }
@@ -1672,9 +1682,20 @@ function initVisits(root){
     var ed=ev.target.closest(".cidcard [data-edit]"); if(ed){ var R=ROWS.find(function(x){return x.id===ed.dataset.edit;}); if(R) loadRec(R); }
   });
 
+  /* ---------- куда направили: кассир, бухгалтерия и т. д. видят, сколько людей пришло к ним ---------- */
+  var DEPT=lsGet("sb_vis_dept")||"";
+  function drawDeptTabs(base){
+    var cnt={}, none=0; base.forEach(function(v){ if(v.dept) cnt[v.dept]=(cnt[v.dept]||0)+1; else none++; });
+    var list=VIS_DEPTS.concat(Object.keys(cnt).filter(function(d){ return VIS_DEPTS.indexOf(d)<0; }));
+    var short=function(d){ return d==="Управляющая компания «Себистон Сервис»"?"УК «Себистон Сервис»":d==="Приёмка квартир и выдача ключей"?"Приёмка и ключи":d; };
+    f(root,"dtabs").innerHTML='<span class="dt-l">Куда направили:</span>'+
+      [["","Все",base.length]].concat(list.map(function(d){ return [d,short(d),cnt[d]||0]; })).concat(none&&DEPT==="—"||none?[["—","Не указано",none]]:[])
+      .map(function(t){ return '<button type="button" role="tab" data-dept="'+esc(t[0])+'" title="'+esc(t[0]||"Все отделы")+'" aria-selected="'+(t[0]===DEPT)+'"'+(t[2]?'':' class="zero"')+'>'+esc(t[1])+' <b>'+t[2]+'</b></button>'; }).join("");
+  }
   function draw(){
     numberVisits(); drawOfficeTabs();
-    var rr=pick(), byRole={}, first=0, quiz=0, days={};
+    var base=pick(); drawDeptTabs(base);
+    var rr=DEPT?base.filter(function(v){ return DEPT==="—"?!v.dept:v.dept===DEPT; }):base, byRole={}, first=0, quiz=0, days={};
     rr.forEach(function(v){ var r=v.role||"—"; byRole[r]=(byRole[r]||0)+1; if((v._n||1)===1) first++; if(v.district||v.rooms||v.area||v.floor||v.source) quiz++; days[String(v.at||"").slice(0,10)]=1; });
     var nd=Object.keys(days).length;
     f(root,"stats").innerHTML=
