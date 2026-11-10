@@ -1352,6 +1352,10 @@ function initVisits(root){
   var VIS_GOALS={"Покупатель":VIS_GOAL_LIST,"Клиент":VIS_GOAL_LIST,"Брокер":VIS_GOAL_LIST,"Партнёр":VIS_GOAL_LIST};
   /* куда киоск направил посетителя — по цели визита */
   var VIS_DEPTS=["Отдел продаж","Касса","Бухгалтерия","Оформление договоров","Приёмка квартир и выдача ключей","Гарантийная служба","Управляющая компания «Себистон Сервис»","Администратор ресепшена"];
+  /* если отдел не пришёл из базы — определяем по цели визита (как подсказывает киоск) */
+  var DEPT_BY_GOAL=[[/оплат/i,1],[/сверить|платеж|платёж|график/i,2],[/договор|документ/i,3],[/ключ|приёмк|приемк/i,4],[/гарант/i,5],[/вопрос по дому|управляющ/i,6],[/сотрудник|встреч/i,7],
+    [/недвиж|квартир|выбрать|подобр|покупк|налич|клиент|строит/i,0]];
+  function deptOf(goal){ goal=String(goal||""); if(!goal) return ""; for(var i=0;i<DEPT_BY_GOAL.length;i++) if(DEPT_BY_GOAL[i][0].test(goal)) return VIS_DEPTS[DEPT_BY_GOAL[i][1]]; return ""; }
   function visAllGoals(){ var s=[]; Object.keys(VIS_GOALS).forEach(function(r){ VIS_GOALS[r].forEach(function(g){ if(s.indexOf(g)<0) s.push(g); }); }); return s; }
 
   root.innerHTML =
@@ -1812,7 +1816,7 @@ function initVisits(root){
     if(loading) return; loading=true; if(!loaded) draw();
     api("visits_list").then(function(j){
       loaded=true; loading=false;
-      if(j && j.ok && Array.isArray(j.visits)){ ROWS=j.visits.map(function(v){ v.at=normAt(v.at); return v; }); sortRows(); }
+      if(j && j.ok && Array.isArray(j.visits)){ ROWS=j.visits.map(function(v){ v.at=normAt(v.at); if(!v.dept){ v.dept=deptOf(v.goal); } return v; }); sortRows(); }
       draw();
     }).catch(function(){
       loaded=true; loading=false;
