@@ -412,6 +412,41 @@ html.m #body{background:transparent;padding:16px 0 4px}
 html.m #submit{height:60px;line-height:60px;font-size:19px}
 html.m #submit::after{width:24px;height:16px;margin-left:10px}
 html.m #done .okcard{left:auto}
+
+/* ---------- три вкладки по макету: Брокер / Клиент / Посетитель ---------- */
+.tab{width:266px}
+.flow{padding-top:44px;overflow-y:auto}
+.flow .fcol{margin-bottom:34px}
+.flow .box{height:76px!important}
+.flow .box .ph,.flow .box .val{top:28px}
+.flow .box .chev{top:32px}
+.flow .phone .pre,.flow .phone .mask{top:28px}
+.qlab{font-size:20px!important;line-height:22px!important;margin-bottom:18px!important}
+.tiles{display:grid;grid-template-columns:394px 392px;gap:14px 11px;margin-bottom:34px;border-radius:14px}
+.tile{display:flex;align-items:center;gap:22px;height:106px;padding:0 26px;border:1.5px solid var(--line);border-radius:14px;background:#fff;text-align:left;
+  box-shadow:0 1px 2px rgba(20,40,30,.05);transition:background-color .15s,border-color .15s,transform .1s}
+.tile:active{transform:scale(.985)}
+.tile .tic{flex:none;width:52px;height:52px;color:#161616;display:grid;place-items:center}
+.tile .tic svg{width:52px;height:52px}
+.tile .ttx{font:700 20px/25px Montserrat,Inter,sans-serif;letter-spacing:-.3px;color:#161616;max-width:210px}
+.tile.on{background:var(--g-soft);border:2px solid var(--g);padding:0 25.5px}
+.tile.on .tic{color:var(--g)}
+.tiles.bad .tile{border-color:#e5484d}
+.route{display:flex;align-items:center;gap:12px;height:56px;padding:0 18px;border-radius:12px;background:var(--g-soft);border:1.5px solid #bcd9c8;font:500 17px/20px Inter,sans-serif;color:#161616;margin-top:-8px}
+.route b{font-family:Montserrat,Inter,sans-serif;font-weight:700;color:var(--g)}
+.route .ic{flex:none;width:28px;height:28px;border-radius:50%;background:var(--g);color:#fff;display:grid;place-items:center;font-size:14px}
+html.m #tabs{grid-template-columns:1fr 1fr 1fr}
+html.m .tab,html.m .tab.on{font-size:16px;letter-spacing:-.4px}
+html.m .tiles{grid-template-columns:1fr 1fr;gap:8px;margin-bottom:20px}
+html.m .tile{height:auto;min-height:92px;padding:12px;gap:10px;flex-direction:column;align-items:flex-start;justify-content:center}
+html.m .tile.on{padding:11.5px}
+html.m .tile .tic,html.m .tile .tic svg{width:34px;height:34px}
+html.m .tile .ttx{font-size:15px;line-height:19px}
+html.m #body .flow .box{height:58px!important}
+html.m .flow .box .ph,html.m .flow .box .val{top:20px}
+html.m .flow .box .chev{top:23px}
+html.m .flow .phone .pre,html.m .flow .phone .mask{top:20px}
+html.m .route{height:auto;padding:12px 14px;margin:0 0 16px}
 </style>
 </head>
 <body>
@@ -452,10 +487,9 @@ html.m #done .okcard{left:auto}
     <div class="abs tabsbox"></div>
     <div class="t h1" id="ttl"></div>
     <div id="tabs">
-      <button class="tab" style="left:501px" data-role="buyer" data-i="r_buyer"></button>
-      <button class="tab" style="left:700px" data-role="client" data-i="r_client"></button>
-      <button class="tab" style="left:899px" data-role="broker" data-i="r_broker"></button>
-      <button class="tab" style="left:1098px" data-role="partner" data-i="r_partner"></button>
+      <button class="tab" style="left:501px" data-role="broker" data-i="r_broker"></button>
+      <button class="tab" style="left:767px" data-role="client" data-i="r_client"></button>
+      <button class="tab" style="left:1032px" data-role="visitor" data-i="r_visitor"></button>
     </div>
     <div id="segs"><button class="seg new" data-mode="new" data-i="s_new"></button><button class="seg reg" data-mode="reg" data-i="s_reg"></button></div>
     <div id="body"></div>
@@ -488,16 +522,21 @@ const T={
 ru:{
  enter:"ВОЙТИ", tap:"Коснитесь экрана", welcome:"Добро пожаловать в Себистон", sub:"Зарегистрируйте пожалуйста ваш визит",
  r_buyer:"Покупатель", r_client:"Клиент", r_broker:"Брокер", r_partner:"Партнёр",
- ttl:{buyer:"Регистрация покупателя",client:"Визит клиента",broker:"Регистрация брокера",partner:"Регистрация партнёра",broker_reg:"Визит брокера",partner_reg:"Визит партнёра"},
+ r_visitor:"Посетитель",
+ mgr:"Менеджер Себистон", mgr_ph:"Выберите менеджера", mgr_title:"Менеджер Себистон", mgr_any:"Любой свободный менеджер",
+ q_title:"По какому вы вопросу?", org:"Организация", org_ph:"Необязательно",
+ whomq:"К кому вы пришли?", whomq_ph:"Выберите сотрудника или отдел", whomq_title:"К кому вы пришли?", route:"Вам сюда",
+ ok_visitor:"Подойдите к стойке ресепшена —<br>администратор проводит вас.", ok_go:"Пройдите, пожалуйста, в отдел:",
+ ttl:{visitor:"Регистрация посетителя",buyer:"Регистрация покупателя",client:"Визит клиента",broker:"Регистрация брокера",partner:"Регистрация партнёра",broker_reg:"Визит брокера",partner_reg:"Визит партнёра"},
  s_reg:"Уже зарегистрирован", s_new:"Первый визит",
  name:"Имя и фамилия", name_ph:"Как к вам обращаться", phone:"Телефон", code:"Подтвердите", code_btn:"Подтвердить",
  email:"E-mail", email_ph:"Введите свой email", email_ph2:"Введите e-mail", email_opt:"E-mail (необязательно)",
- jk:"Интересующие ЖК", jk_ph:"Выберите жилой комплекс", jk_title:"Выберите ЖК",
+ jk:"Жилой комплекс", jk_ph:"Выберите из списка", jk_title:"Выберите ЖК",
  dept:"Куда направить", dept_ph:"Подскажем по цели визита", dept_title:"Куда направить", dept_hint:"подсказка по цели визита",
  whom:"Кому", whom_ph:"Имя сотрудника, если знаете",
- depts:["Отдел продаж","Касса","Бухгалтерия","Оформление договоров","Приёмка квартир и выдача ключей","Гарантийная служба","Управляющая компания «Себистон Сервис»","Администратор ресепшена"],
+ depts:["Отдел продаж","Касса","Бухгалтерия","Оформление договоров","Приёмка квартир и выдача ключей","Гарантийная служба","Управляющая компания «Себистон Сервис»","Администратор ресепшена","Руководство компании","Отдел маркетинга","Отдел кадров (HR)","Отдел снабжения","Юридический отдел"],
  goal:"Цель визита", goal_ph:"Выберите цель визита", goal_title:"Выберите цель визита",
- agency:"Агентство недвижимости", agency_ph:"Название агентства",
+ agency:"Агентство", agency_ph:"Название агентства",
  company:"Компания / Организация", company_ph:"Название компании",
  dir:"Направление партнёрства", dir_ph:"Выберите направление", dir_title:"Выберите направление",
  vk_next:"Далее", vk_hide:"Скрыть",
@@ -515,7 +554,7 @@ ru:{
  ok_visit_n:"Это ваш %-й визит к нам", ok_visit_1:"Первый визит — добро пожаловать!",
  ok_id:"Ваш ID клиента", ok_mgr:"Ваш менеджер", ok_mgr_note:"Мы уже сообщили ему, что вы пришли", ok_mgr_note2:"Подойдите к нему на ресепшн", ok_wait:"получаем…", ok_id_note:"Назовите его менеджеру",
  ok_buyer:"Наш менеджер Нозия сопроводит вас и<br>ответит на все ваши вопросы.",
- ok_client:"Вы можете подойти к своему менеджеру,<br>благодарим за повторный визит нашего офиса.",
+ ok_client:"Ваш менеджер встретит вас<br>и ответит на все ваши вопросы.",
  ok_broker:"Рады видеть вас и вашего<br>клиента в нашем офисе.",
  ok_partner:"Подойдите к стойке ресепшена — менеджер проведет<br>вас к ответственному представителю.",
 
@@ -536,16 +575,21 @@ ru:{
 tg:{
  enter:"ДАРОМАДАН", tap:"Экранро ламс кунед", welcome:"Хуш омадед ба Себистон", sub:"Лутфан, ташрифи худро сабт кунед",
  r_buyer:"Харидор", r_client:"Муштарӣ", r_broker:"Брокер", r_partner:"Ҳамкор",
- ttl:{buyer:"Бақайдгирии харидор",client:"Ташрифи муштарӣ",broker:"Бақайдгирии брокер",partner:"Бақайдгирии ҳамкор",broker_reg:"Ташрифи брокер",partner_reg:"Ташрифи ҳамкор"},
+ r_visitor:"Меҳмон",
+ mgr:"Менеҷери Себистон", mgr_ph:"Менеҷерро интихоб кунед", mgr_title:"Менеҷери Себистон", mgr_any:"Ҳар менеҷери озод",
+ q_title:"Бо кадом масъала омадед?", org:"Ташкилот", org_ph:"Ихтиёрӣ",
+ whomq:"Назди кӣ омадед?", whomq_ph:"Корманд ё шуъбаро интихоб кунед", whomq_title:"Назди кӣ омадед?", route:"Ба ин ҷо равед",
+ ok_visitor:"Ба мизи пешвоз равед —<br>маъмур шуморо гусел мекунад.", ok_go:"Лутфан, ба ин шуъба равед:",
+ ttl:{visitor:"Бақайдгирии меҳмон",buyer:"Бақайдгирии харидор",client:"Ташрифи муштарӣ",broker:"Бақайдгирии брокер",partner:"Бақайдгирии ҳамкор",broker_reg:"Ташрифи брокер",partner_reg:"Ташрифи ҳамкор"},
  s_reg:"Аллакай сабт шудаам", s_new:"Ташрифи аввал",
  name:"Ном ва насаб", name_ph:"Чӣ тавр муроҷиат кунем", phone:"Телефон", code:"Тасдиқ кунед", code_btn:"Тасдиқ кардан",
  email:"E-mail", email_ph:"E-mail-и худро ворид кунед", email_ph2:"E-mail-ро ворид кунед", email_opt:"E-mail (ихтиёрӣ)",
- jk:"Маҷмааҳои мавриди таваҷҷӯҳ", jk_ph:"Маҷмааи манзилиро интихоб кунед", jk_title:"Маҷмаъро интихоб кунед",
+ jk:"Маҷмааи истиқоматӣ", jk_ph:"Аз рӯйхат интихоб кунед", jk_title:"Маҷмаъро интихоб кунед",
  dept:"Ба куҷо равона кардан", dept_ph:"Аз рӯи мақсади ташриф нишон медиҳем", dept_title:"Ба куҷо равона кардан", dept_hint:"тавсия аз рӯи мақсади ташриф",
  whom:"Ба кӣ", whom_ph:"Номи корманд, агар медонед",
- depts:["Шӯъбаи фурӯш","Касса","Муҳосибот","Ба расмият даровардани шартномаҳо","Қабули квартираҳо ва супоридани калидҳо","Хадамоти кафолатӣ","Ширкати идоракунандаи «Себистон Сервис»","Маъмури ресепшн"],
+ depts:["Шӯъбаи фурӯш","Касса","Муҳосибот","Ба расмият даровардани шартномаҳо","Қабули квартираҳо ва супоридани калидҳо","Хадамоти кафолатӣ","Ширкати идоракунандаи «Себистон Сервис»","Маъмури ресепшн","Роҳбарияти ширкат","Шуъбаи маркетинг","Шуъбаи кадрҳо (HR)","Шуъбаи таъминот","Шуъбаи ҳуқуқӣ"],
  goal:"Мақсади ташриф", goal_ph:"Мақсади ташрифро интихоб кунед", goal_title:"Мақсади ташрифро интихоб кунед",
- agency:"Агентии амволи ғайриманқул", agency_ph:"Номи агентӣ",
+ agency:"Агентӣ", agency_ph:"Номи агентӣ",
  company:"Ширкат / Созмон", company_ph:"Номи ширкат",
  dir:"Самти ҳамкорӣ", dir_ph:"Самтро интихоб кунед", dir_title:"Самтро интихоб кунед",
  vk_next:"Минбаъд", vk_hide:"Пинҳон",
@@ -563,7 +607,7 @@ tg:{
  ok_visit_n:"Ин ташрифи %-уми шумо ба мост", ok_visit_1:"Ташрифи аввал — хуш омадед!",
  ok_id:"ID-и мизоҷи шумо", ok_mgr:"Менеҷери шумо", ok_mgr_note:"Мо ба ӯ хабар додем, ки шумо омадед", ok_mgr_note2:"Ба назди ӯ дар ресепшн равед", ok_wait:"гирифта истодаем…", ok_id_note:"Онро ба менеҷер гӯед",
  ok_buyer:"Менеҷери мо Нозия шуморо ҳамроҳӣ мекунад ва ба ҳамаи саволҳои шумо ҷавоб медиҳад.",
- ok_client:"Шумо метавонед назди менеҷери худ равед. Барои ташрифи такрорӣ ба офиси мо ташаккур.",
+ ok_client:"Менеҷери шумо шуморо пешвоз мегирад<br>ва ба ҳамаи саволҳоятон ҷавоб медиҳад.",
  ok_broker:"Шодем, ки шуморо ва мизоҷатонро дар офиси мо мебинем.",
  ok_partner:"Ба мизи пешвоз равед — менеҷер шуморо назди намояндаи масъул мебарад.",
 
@@ -581,17 +625,33 @@ tg:{
   broker:["Сабти мизоҷ","Интихоби квартира барои мизоҷ","Ҳамроҳӣ кардани мизоҷ","Муҳокимаи шартҳои ҳамкорӣ","Равшан кардани мавҷудияти квартираҳо ва нархҳо","Брон кардани квартира","Муҳокимаи созиши амалкунанда","Тартиб додан ё имзо кардани ҳуҷҷатҳо","Мулоқот бо роҳбарият"],
   partner:["Муҳокимаи ҳамкорӣ","Мулоқот оид ба лоиҳаи амалкунанда","Муҳокимаи чорабинӣ ё сарпарастӣ","Супоридан ё имзо кардани ҳуҷҷатҳо"]}
 }};
-/* один список целей визита для всех вкладок (покупатель, клиент, брокер, партнёр) */
-for(const l of ["ru","tg"]) for(const r of ["client","broker","partner"]) T[l].goals[r]=T[l].goals.buyer;
+/* вкладки по макету: Брокер / Клиент / Посетитель — у каждой свои цели визита */
+Object.assign(T.ru.goals,{
+  broker:["Показ с покупателем","Бронирование квартиры","Оформление сделки","Уточнить наличие и цены","Условия сотрудничества","Встреча с менеджером"],
+  client:["Покупка недвижимости","Оплата","Договор и документы","Получение ключей"],
+  visitor:["Деловая встреча","Партнёрство и сотрудничество","Поставка, подряд","Собеседование","Доставка, курьер","Другое"]});
+Object.assign(T.tg.goals,{
+  broker:["Намоиш бо харидор","Брон кардани квартира","Ба расмият даровардани аҳд","Мавҷудият ва нархҳо","Шартҳои ҳамкорӣ","Мулоқот бо менеҷер"],
+  client:["Хариди амволи ғайриманқул","Пардохт","Шартнома ва ҳуҷҷатҳо","Гирифтани калидҳо"],
+  visitor:["Мулоқоти корӣ","Шарикӣ ва ҳамкорӣ","Таъминот, пудрат","Мусоҳиба","Расонидан, хаткашон","Дигар"]});
+/* клиент: вопрос → отдел (0 продажи, 1 касса, 3 оформление договоров, 4 приёмка и ключи) */
+const CL_DEPT=[0,1,3,4];
+/* менеджеры для поля «Менеджер Себистон» — с сервера (лист «Пользователи»), запоминаются на устройстве */
+let MGRS=[]; try{ MGRS=JSON.parse(localStorage.getItem("sebiston_mgrs")||"[]"); }catch(e){}
+const TILE_IC=[
+ '<svg viewBox="0 0 48 48" fill="none" stroke="currentColor" stroke-width="2.6" stroke-linecap="round" stroke-linejoin="round"><path d="M6 23 24 8l18 15"/><path d="M11 20v20h26V20"/><path d="M20 40V29h8v11"/></svg>',
+ '<svg viewBox="0 0 48 48" fill="none" stroke="currentColor" stroke-width="2.6" stroke-linecap="round" stroke-linejoin="round"><rect x="5" y="10" width="38" height="28" rx="4"/><path d="M5 18h38"/><path d="M30 30h.5M36 30h.5" stroke-width="4"/></svg>',
+ '<svg viewBox="0 0 48 48" fill="none" stroke="currentColor" stroke-width="2.6" stroke-linecap="round" stroke-linejoin="round"><path d="M12 6h17l9 9v24a3 3 0 0 1-3 3H12a3 3 0 0 1-3-3V9a3 3 0 0 1 3-3z"/><path d="M29 6v9h9"/><path d="M16 22h13M16 29h16M16 36h10"/></svg>',
+ '<svg viewBox="0 0 48 48" fill="none" stroke="currentColor" stroke-width="2.6" stroke-linecap="round" stroke-linejoin="round"><circle cx="32" cy="16" r="9"/><circle cx="34" cy="14" r="1.6" fill="currentColor"/><path d="M25.5 22.5 7 41v0h7v-5h5v-5h4l3.500-3.500"/></svg>'];
 const JK=["Бульвар Скандинавия","ADDRESS Residence","Varzob Riviera","GissarMall","Ахрори"];
 
 /* ---------- state ---------- */
 const $=s=>document.querySelector(s), $$=s=>[...document.querySelectorAll(s)];
 let profile=null, otpReq=null, otpMsg="", otpBad=false, otpTimer=null;
 function stopOtpPoll(){ if(otpTimer){ clearInterval(otpTimer); otpTimer=null; } }
-let lang="ru", role="buyer", mode="new", verified=false, codeSent=false, tried=false;
+let lang="ru", role="client", mode="new", verified=false, codeSent=false, tried=false;
 let data={};
-const reset=()=>{data={name:"",phone:"",email:"",agency:"",company:"",code:"",jk:[],goal:null,dir:null,dept:null,deptAuto:false,whom:"",quiz:{district:[],rooms:[],area:[],floor:[],source:[]}};verified=false;codeSent=false;tried=false;profile=null;otpReq=null;otpMsg="";otpBad=false;stopOtpPoll();};
+const reset=()=>{data={name:"",phone:"",email:"",agency:"",company:"",code:"",jk:[],goal:null,dir:null,dept:null,deptAuto:false,whom:"",mgr:null,quiz:{district:[],rooms:[],area:[],floor:[],source:[]}};verified=false;codeSent=false;tried=false;profile=null;otpReq=null;otpMsg="";otpBad=false;stopOtpPoll();};
 reset();
 const t=k=>T[lang][k];
 const esc=s=>String(s).replace(/[&<>"]/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;'}[c]));
@@ -612,42 +672,10 @@ const GOAL_DEPT=[0,1,2,3,4,5,6,7,0];
 const G=(lab,inp)=>[F("goal",lab,inp,501,394),F("dept",lab,inp,906,392)];   // цель визита | куда направить (подсказка)
 const RECEPTION=7;
 function layout(){
-  const L={card:null,items:[],note:null,locked:false,submitOff:false};
-  if(role==="buyer"){
-    L.card=[285,579];
-    L.items=[F("name",329,361,501,394),F("phone",329,361,906,392),F("email",459,492,501,797,72),F("goal",589,622),F("jk",717,750),F("dept",0,0),F("whom",0,0)];
-    L.note={y:882,x:495,k:"consent"};
-    return L;
-  }
-  if(role==="client"){
-    L.card=[285,579];
-    if(!verified){ L.items=[F("vphone",329,361,501,392),F("code",329,361,906,392),{k:"confirm",y:466},...G(589,622),F("jk",717,750,501,394),F("email",717,750,906,392)];
-      L.locked=true; L.submitOff=true; L.note={y:883,k:"consent",c:1}; }
-    else { L.items=[{k:"person",y:329},{k:"pline",y:530},...G(589,622),F("jk",717,750,501,394),F("email",717,750,906,392)]; L.note={y:883,k:"visible",c:1}; }
-    return L;
-  }
-  // broker / partner
-  const last = role==="broker" ? "jk" : "goal";
-  if(mode==="reg" && role==="broker"){          // брокер «уже зарегистрирован» — как клиент: ЖК + цель визита
-    L.card=[368,506];
-    if(!verified){ L.items=[F("vphone",395,427,501,392),F("code",395,427,906,392),{k:"confirm",y:518},...G(628,660),F("jk",751,783,501,394),F("email",751,783,906,392)];
-      L.locked=true; L.submitOff=true; }
-    else L.items=[{k:"person",y:388},{k:"pline",y:569},...G(615,647),F("jk",743,775,501,394),F("email",743,775,906,392)];
-    L.note={y:888,k:"consent",c:1};
-  } else if(mode==="reg"){
-    L.card=[368,476];
-    if(!verified){ L.items=[F("vphone",424,456,501,392),F("code",424,456,906,392),{k:"confirm",y:561},...(last==="goal"?G(684,717):[F(last,684,717)])];
-      L.locked=true; L.submitOff=true; }
-    else L.items=[{k:"person",y:401},{k:"pline",y:610},...(last==="goal"?G(678,711):[F(last,678,711)])];
-    L.note={y:873,k:"consent",c:1};
-  } else {
-    L.card=[368,538];
-    L.items = role==="broker"
-      ? [F("name",391,423,501,394),F("phone",391,423,906,392),F("agency",521,554,501,394,72),F("email",521,554,906,392,72),...G(651,684),F("jk",779,812)]
-      : [F("name",391,423,501,394),F("phone",391,423,906,392),F("company",521,554,501,394,72),F("email",521,554,906,394,72),F("dir",651,684),...G(779,812)];
-  }
-  return L;
+  /* все три вкладки — потоковая вёрстка (см. render): Брокер / Клиент / Посетитель */
+  return {card:[285,579],items:[],note:{y:882,k:"consent",c:1},locked:false,submitOff:false};
 }
+const deptNow=()=> role==="client" ? (data.goal!=null?CL_DEPT[data.goal]:null) : role==="broker" ? (data.goal!=null?0:null) : data.dept;
 
 const SLOT_X=[7,17,40,50,60,75,85,100,110];   // (XX) XXX XX XX
 function maskHTML(d){
@@ -666,13 +694,13 @@ function phoneBox(f,off){
 function bad(k){
   if(!tried) return "";
   const ok={name:data.name.trim().length>1, phone:phoneOk(), vphone:phoneOk(), email:emailFine(), agency:!!data.agency.trim(), company:!!data.company.trim(),
-            jk:data.jk.length>0, goal:data.goal!=null, dir:data.dir!=null, code:true}[k];
+            jk:data.jk.length>0, goal:data.goal!=null, dir:data.dir!=null, code:true, whomq:data.dept!=null, mgr:true, org:true}[k];
   return ok===false ? " bad":"";
 }
 function field(f,locked){
   const lockMe = locked && (f.k==="jk"||f.k==="goal"||f.k==="email");
   const off = lockMe ? " off":"";
-  const lab = {name:"name",phone:"phone",vphone:"phone",code:"code",email:"email",agency:"agency",company:"company",jk:"jk",goal:"goal",dir:"dir",dept:"dept",whom:"whom"}[f.k];
+  const lab = {name:"name",phone:"phone",vphone:"phone",code:"code",email:"email",agency:"agency",company:"company",jk:"jk",goal:"goal",dir:"dir",dept:"dept",whom:"whom",mgr:"mgr",org:"org",whomq:"whomq"}[f.k];
   let h=`<div class="lab${lockMe?" off":""}" style="left:${f.x}px;top:${f.lab}px">${t(lab)}</div>`;
   const st=`left:${f.x}px;top:${f.inp}px;width:${f.w}px;height:${f.h}px`;
   const inp=(id,val,ph,type="text",extra="")=>`<div class="box${off}${bad(f.k)} ${extra}" style="${st}"><input id="${id}" type="${type}" autocomplete="off" placeholder="${esc(ph)}" value="${esc(val)}"></div>`;
@@ -682,6 +710,7 @@ function field(f,locked){
     case "agency": h+=inp("i_agency",data.agency,t("agency_ph")); break;
     case "company": h+=inp("i_company",data.company,t("company_ph")); break;
     case "whom": h+=inp("i_whom",data.whom,t("whom_ph")); break;
+    case "org": h+=inp("i_company",data.company,t("org_ph")); break;
     case "phone": case "vphone": h+=phoneBox(f,off); break;
     case "code": h+=`<div class="box code" style="${st}"><input id="i_code" type="text" inputmode="numeric" autocomplete="one-time-code" maxlength="4" placeholder="••••" value="${esc(data.code)}"></div>`; break;
     case "dept": {
@@ -695,8 +724,8 @@ function field(f,locked){
          (on?`<span class="tx"><b>${esc(T[lang].depts[data.dept])}</b><small>${t("dept_hint")}</small></span>`:`<span class="tx mut">${t("dept_ph")}</span>`)+`</div>`;
       break;
     }
-    case "jk": case "goal": case "dir": {
-      const val = f.k==="jk" ? data.jk.join(", ") : f.k==="goal" ? (data.goal!=null?T[lang].goals[role][data.goal]:"") : f.k==="dept" ? (data.dept!=null?T[lang].depts[data.dept]:"") : (data.dir!=null?T[lang].dirs[data.dir]:"");
+    case "jk": case "goal": case "dir": case "mgr": case "whomq": {
+      const val = f.k==="jk" ? data.jk.join(", ") : f.k==="goal" ? (data.goal!=null?T[lang].goals[role][data.goal]:"") : f.k==="mgr" ? (data.mgr==null?"":data.mgr===0?t("mgr_any"):(MGRS[data.mgr-1]||"")) : f.k==="whomq" ? (data.dept!=null?T[lang].depts[data.dept]:"") : f.k==="dept" ? (data.dept!=null?T[lang].depts[data.dept]:"") : (data.dir!=null?T[lang].dirs[data.dir]:"");
       const ph = t(f.k+"_ph");
       h+=`<button type="button" class="box pick${off}${bad(f.k)}" data-pick="${f.k}" style="${st}">${val?`<span class="val">${esc(val)}</span>`:`<span class="ph">${ph}</span>`}${CHEV}</button>`;
     }
@@ -708,19 +737,22 @@ function render(){
   const L=layout();
   $$("#tabs .tab").forEach(b=>b.classList.toggle("on",b.dataset.role===role));
   { const tt=T[lang].ttl, el=$("#ttl"); if(el) el.textContent = tt[role+(mode==="reg"?"_reg":"")] || tt[role]; }
-  const hasSeg = role==="broker"||role==="partner";
+  const hasSeg = false;   // «Первый визит / Уже зарегистрирован» в новом макете нет
   $("#segs").style.display = hasSeg ? "" : "none";
   $$("#segs .seg").forEach(b=>b.classList.toggle("on",b.dataset.mode===mode));
   const prevFlow=$("#flow"), keepScroll=prevFlow?prevFlow.scrollTop:0;
   let h=`<div class="abs card" style="top:${L.card[0]}px;height:${L.card[1]}px"></div>`;
-  if(role==="buyer"){
-    const [fn,fp,fe,fj,fg,fd,fw]=L.items, rec=data.dept===RECEPTION;
-    h+=`<div class="flow" id="flow"><div class="frow"><div class="fcol">${field(fn)}</div><div class="fcol">${field(fp)}</div></div>`+
-       `<div class="fcol">${field(fe)}</div>`+
-       `<div class="frow"><div class="fcol">${field(fj)}</div><div class="fcol">${field(fd)}</div></div>`+       // цель визита | куда направить
-       (rec ? `<div class="frow"><div class="fcol">${field(fg)}</div><div class="fcol">${field(fw)}</div></div>`   // ЖК | кому (для ресепшена)
-            : `<div class="fcol">${field(fg)}</div>`)+`</div>`;      // анкета о квартире вынесена на отдельную страницу /anketa/
-    L.items=[];
+  { const X=k=>F(k,0,0), col=k=>`<div class="fcol">${field(X(k))}</div>`, row=(a,b)=>`<div class="frow">${col(a)}${col(b)}</div>`;
+    let f="";
+    if(role==="broker") f=row("name","phone")+row("agency","jk")+row("goal","mgr");
+    else if(role==="visitor") f=row("name","phone")+row("goal","org")+col("whomq");
+    else { const G=T[lang].goals.client, d=deptNow();
+      f=`<div class="lab qlab">${t("q_title")}</div><div class="tiles${tried&&data.goal==null?" bad":""}">`+
+          G.map((g,i)=>`<button type="button" class="tile${data.goal===i?" on":""}" data-tile="${i}" aria-pressed="${data.goal===i}"><span class="tic">${TILE_IC[i]}</span><span class="ttx">${esc(g)}</span></button>`).join("")+`</div>`+
+        row("name","phone")+
+        (d!=null?`<div class="route"><span class="ic">➜</span><span>${t("route")}: <b>${esc(T[lang].depts[d])}</b></span></div>`:"");
+    }
+    h+=`<div class="flow f-${role}" id="flow">${f}</div>`;
   }
   for(const f of L.items){
     if(f.k==="confirm"){ h+=`<button class="btn" id="verify" style="left:501px;top:${f.y}px;width:797px">${codeSent?t("code_btn"):t("send_code")}</button>`+
@@ -780,11 +812,10 @@ const emailOk=()=>/^[^@\s]+@[^@\s]+\.[^@\s]+$/.test(data.email);
 const emailNeed=()=>role==="buyer"||role==="partner";                       // клиенту и брокеру почта не обязательна
 const emailFine=()=>emailNeed()?emailOk():(!data.email.trim()||emailOk());
 function valid(){
-  if(role==="buyer") return data.name.trim().length>1&&phoneOk()&&emailOk()&&data.jk.length&&data.goal!=null;
-  if(role==="client") return verified&&data.jk.length>0&&data.goal!=null&&emailFine();
-  if(mode==="reg") return verified&&(role==="broker"?(data.jk.length>0&&data.goal!=null&&emailFine()):data.goal!=null);
-  if(role==="broker") return data.name.trim().length>1&&phoneOk()&&data.agency.trim()&&data.jk.length&&data.goal!=null&&emailFine();
-  return data.name.trim().length>1&&phoneOk()&&data.company.trim()&&emailOk()&&data.dir!=null&&data.goal!=null;
+  const base=data.name.trim().length>1&&phoneOk();
+  if(role==="broker") return base&&!!data.agency.trim()&&data.jk.length>0&&data.goal!=null;
+  if(role==="client") return base&&data.goal!=null;
+  return base&&data.goal!=null&&data.dept!=null;        // посетитель
 }
 
 function bind(){
@@ -826,6 +857,7 @@ function bind(){
     const c=$("#i_code"); if(c){ c.closest(".box").classList.add("bad"); c.select(); }
   });
   $$("[data-pick]").forEach(b=>b.addEventListener("click",()=>openDD(b.dataset.pick,b)));
+  $$("[data-tile]").forEach(b=>b.addEventListener("click",()=>{ data.goal=+b.dataset.tile; render(); }));
   $$(".chip").forEach(c=>c.addEventListener("click",()=>{ const k=c.dataset.q, i=+c.dataset.i, a=data.quiz[k];
     data.quiz[k] = a.includes(i) ? a.filter(x=>x!==i) : [...a,i].sort((x,y)=>x-y);
     const on=data.quiz[k].includes(i); c.classList.toggle("on",on); c.setAttribute("aria-pressed",on); quizProg(); }));
@@ -836,13 +868,14 @@ let ddKey=null;
 function openDD(k,anchor){
   ddKey=k; const L=T[lang];
   /* у покупателя первая строка списка целей — «Недвижимость»: её можно выбрать, она же закрывает список */
-  const headPick = k==="goal";
-  const title = headPick ? L.goals[role][0] : k==="jk"?L.jk_title : k==="goal"?L.goal_title : k==="dept"?L.dept_title : L.dir_title;
-  const items = k==="jk"?JK : k==="goal"?L.goals[role] : k==="dept"?L.depts : L.dirs;
-  const sel=i=> k==="jk"?data.jk.includes(JK[i]) : k==="goal"?data.goal===i : k==="dept"?data.dept===i : data.dir===i;
+  const headPick = false;
+  const mg=[L.mgr_any,...MGRS];
+  const title = k==="jk"?L.jk_title : k==="goal"?L.goal_title : k==="mgr"?L.mgr_title : k==="whomq"?L.whomq_title : k==="dept"?L.dept_title : L.dir_title;
+  const items = k==="jk"?JK : k==="goal"?L.goals[role] : k==="mgr"?mg : (k==="dept"||k==="whomq")?L.depts : L.dirs;
+  const sel=i=> k==="jk"?data.jk.includes(JK[i]) : k==="goal"?data.goal===i : k==="mgr"?data.mgr===i : (k==="dept"||k==="whomq")?data.dept===i : data.dir===i;
   const dd=$("#dd");
   /* у каждой цели — куда направят (касса, бухгалтерия…) */
-  const to=i=> k==="goal" ? `<span class="to">➜ ${esc(L.depts[GOAL_DEPT[i]??0])}</span>` : "";
+  const to=i=>"";
   dd.innerHTML=`<div class="hd" id="ddOk">${esc(title)}${headPick?to(0):""}<span class="ok">${CHECK_DD}</span></div>`+
     items.map((n,i)=> headPick&&i===0 ? "" : `<div role="option" tabindex="0" class="opt${sel(i)?" sel":""}" data-i="${i}">${esc(n)}${to(i)}${CHECK_DD}</div>`).join("");
   const h = 21+16+13+(items.length-(headPick?1:0))*41+12;
@@ -854,11 +887,11 @@ function openDD(k,anchor){
   $$("#dd .opt").forEach(b=>b.addEventListener("click",()=>{
     const i=+b.dataset.i;
     if(k==="jk"){ const n=JK[i]; data.jk=data.jk.includes(n)?data.jk.filter(x=>x!==n):[...data.jk,n]; b.classList.toggle("sel"); }
-    else { if(k==="goal") setGoal(i); else if(k==="dept"){ data.dept=i; data.deptAuto=false; } else data.dir=i; closeDD(); }
+    else { if(k==="goal") data.goal=i; else if(k==="mgr") data.mgr=i; else if(k==="dept"||k==="whomq"){ data.dept=i; data.deptAuto=false; } else data.dir=i; closeDD(); }
   }));
 }
 /* выбор цели — у покупателя сразу подсказываем, куда направить (если отдел не выбран вручную) */
-function setGoal(i){ data.goal=i; data.dept=GOAL_DEPT[i]??0; data.deptAuto=true; }
+function setGoal(i){ data.goal=i; }
 function closeDD(){ $("#dd").classList.remove("on"); $("#ddCatch").classList.remove("on"); ddKey=null; render(); }
 $("#ddCatch").addEventListener("click",closeDD);
 
@@ -869,7 +902,7 @@ $("#ddCatch").addEventListener("click",closeDD);
    BITRIX_WEBHOOK (crm.lead.add) можно вписать позже — тогда визит продублируется и в Битрикс24 как лид. */
 const SHEET_API="https://script.google.com/macros/s/AKfycbwAwrts4_R3JlbBpfUKtaGtwRTDNDSb_BX3C-CQ0-ZtHm3KBJEWVT4t8NnSwH04RKra/exec";
 const CONFIG={ BITRIX_WEBHOOK:"" };
-const ROLE_RU={buyer:"Покупатель",client:"Клиент",broker:"Брокер",partner:"Партнёр"};
+const ROLE_RU={buyer:"Покупатель",client:"Клиент",broker:"Брокер",partner:"Партнёр",visitor:"Посетитель"};
 const QKEY="sebiston_visit_queue";
 const getQ=()=>{try{return JSON.parse(localStorage.getItem(QKEY)||"[]");}catch(e){return [];}};
 const setQ=q=>{try{localStorage.setItem(QKEY,JSON.stringify(q));}catch(e){}};
@@ -904,7 +937,7 @@ function buildVisit(){
   const dir  = data.dir!=null ? ru.dirs[data.dir] : "";
   const who  = verified ? ((profile&&profile.name)||data.name.trim()) : data.name.trim();
   const now  = new Date();
-  const modeTxt = role==="buyer" ? "" : (isReg ? "уже зарегистрирован" : "первый визит");
+  const modeTxt = "";
   const phone = fullPhone(data.phone);
   const Q={}; T.ru.quiz.forEach(q=>{ Q[q.k]=(data.quiz[q.k]||[]).map(i=>q.o[i]).join(", "); });
   const quizLines=T.ru.quiz.filter(q=>Q[q.k]).map(q=>q.q.replace(/\?$/,"")+": "+Q[q.k]);
@@ -918,7 +951,8 @@ function buildVisit(){
     v:{ id, at:new Date(now.getTime()-now.getTimezoneOffset()*60000).toISOString().slice(0,19), role:ROLE_RU[role], mode:modeTxt, name:who,   /* at — местное время киоска */
         phone:"+992"+digits(data.phone), email:data.email.trim(),
         jk:data.jk.slice(), goal, agency:data.agency.trim(), company:data.company.trim(), dir, lang:lang.toUpperCase(), office:getOffice(), acc:getOffice()?"admin("+getOffice()+")":"",
-        dept:data.dept!=null?ru.depts[data.dept]:(data.goal!=null?ru.depts[GOAL_DEPT[data.goal]??0]:""), whom:data.dept===RECEPTION?data.whom.trim():"",
+        dept:deptNow()!=null?ru.depts[deptNow()]:"", whom:"",
+        pmgr:(role==="broker"&&data.mgr>0)?(MGRS[data.mgr-1]||""):"",
         /* анкету киоск больше не отправляет — её заполняют по отдельной ссылке, ответы не затираются */ },
     fields:{ TITLE:"Визит в офис: "+ROLE_RU[role]+" — "+(who||phone), NAME:who,
       PHONE:[{VALUE:"+992"+digits(data.phone),VALUE_TYPE:"WORK"}],
@@ -979,12 +1013,19 @@ async function flush(){
 addEventListener("online",flush); setInterval(flush,30000); flush();
 
 /* ---------- success screen ---------- */
+/* клиенту с оплатой, договором или ключами сразу пишем, в какой отдел пройти */
+function okText(){ const d=deptNow();
+  if(role==="client" && d) return t("ok_go")+`<br><b style="font:700 22px/30px Montserrat,Inter,sans-serif;color:var(--g)">${esc(T[lang].depts[d])}</b>`;
+  return t("ok_"+role); }
+/* список менеджеров для брокера */
+async function loadMgrs(){ try{ const j=await callApi("mgrs"); if(j&&j.ok&&Array.isArray(j.mgrs)&&j.mgrs.length){ MGRS=j.mgrs.map(String); try{ localStorage.setItem("sebiston_mgrs",JSON.stringify(MGRS)); }catch(e){} } }catch(e){} }
+setTimeout(loadMgrs,1500); setInterval(loadMgrs,3600e3);
 function showDone(){
-  const P = role==="buyer" ? {c:339,ti:451,tx:509,b:712} : {c:326,ti:438,tx:496,b:797};
+  const P = {c:326,ti:438,tx:496,b:797};
   $("#okTick").style.top=P.c+"px"; $("#okTitle").style.top=P.ti+"px";
-  const tx=$("#okText"); tx.style.top=P.tx+"px"; tx.innerHTML=t("ok_"+role);
+  const tx=$("#okText"); tx.style.top=P.tx+"px"; tx.innerHTML=okText();
   const fb=$("#finish"); fb.style.top=P.b+"px";
-  $("#okInfo").style.top=(role==="buyer"?578:572)+"px";
+  $("#okInfo").style.top="590px";
   doneInfo=null; drawOkInfo();
   clearTimeout(doneWaitT); doneWaitT=setTimeout(()=>{ if(!doneInfo){ doneId=null; drawOkInfo(); } },35000);   // нет связи — блок просто не показываем
   show("done"); doneT=setTimeout(goHome,30000);
@@ -998,7 +1039,7 @@ function drawOkInfo(){
   const cid=I.cid||pre.clientId||"", mgr=I.mgr||pre.manager||"", waiting=!doneInfo && !!doneId;
   if(!cid && !mgr && !waiting){ box.className="okinfo"; box.innerHTML=""; return; }
   box.className="okinfo on"+(!cid&&waiting?" wait":"");
-  if(mgr && role==="buyer") $("#okText").innerHTML=t("ok_buyer_m");      // без «Нозии» — называем закреплённого менеджера
+
   box.innerHTML=`<div class="ib"><div class="k">${t("ok_id")}</div><div class="v">${esc(cid||t("ok_wait"))}</div><div class="n">${I.n>1?t("ok_visit_n").replace("%",I.n):(I.n===1?t("ok_visit_1"):t("ok_id_note"))}</div></div>`+
     (mgr?`<div class="ib wide"><div class="k">${t(I.isNew?"ok_mgr_new":"ok_mgr")}</div><div class="v">${esc(mgr)}</div><div class="n">${I.sent?t("ok_mgr_note"):t("ok_mgr_note2")}</div></div>`:"");
 }
@@ -1014,7 +1055,7 @@ $("#submit").addEventListener("click",()=>{
   showDone(); });
 $("#finish").addEventListener("click",goHome);
 const isM=()=>document.documentElement.classList.contains("m");   // phones open straight on the form
-function goHome(){ clearTimeout(doneT); clearTimeout(doneWaitT); doneId=null; doneInfo=null; reset(); role="buyer"; mode="new"; render(); show("form"); armAttract(); }
+function goHome(){ clearTimeout(doneT); clearTimeout(doneWaitT); doneId=null; doneInfo=null; reset(); role="client"; mode="new"; render(); show("form"); armAttract(); }
 
 let idle=null;
 function bump(){ clearTimeout(idle); idle=setTimeout(()=>{ if($("#form").classList.contains("on")) goHome(); },90000); }
@@ -1096,7 +1137,7 @@ applyOffice();
 function setLang(l){ lang=l; document.documentElement.lang=l==="tg"?"tg":"ru";
   $$("[data-lang]").forEach(b=>b.classList.toggle("on",b.dataset.lang===l));
   $$("[data-i]").forEach(el=>{ if(T[l][el.dataset.i]!==undefined) el.textContent=T[l][el.dataset.i]; });
-  render(); if($("#done").classList.contains("on")){ $("#okText").innerHTML=t("ok_"+role); drawOkInfo(); } }
+  render(); if($("#done").classList.contains("on")){ $("#okText").innerHTML=okText(); drawOkInfo(); } }
 document.addEventListener("click",e=>{const b=e.target.closest("[data-lang]"); if(b) setLang(b.dataset.lang);});
 
 /* ---------- левая колонка: ролик с YouTube, подогнанный под размер колонки ----------

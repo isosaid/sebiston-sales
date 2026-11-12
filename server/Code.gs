@@ -307,6 +307,7 @@ function doPost(e){
   try{ seedUsers_(false); }catch(x){}
   if(q.a === 'login') return reply_(login_(q.u, q.p));
   if (q.a === 'visit') return reply_(saveVisit_(q.v));
+  if (q.a === 'mgrs')  return reply_({ ok:true, mgrs: kioskMgrs_() });      // список менеджеров для поля «Менеджер Себистон» на киоске
   if (q.a === 'quiz')  return reply_(saveQuiz_(q));
   if (q.a === 'otp_request') return reply_(otpRequest_(q));
   if (q.a === 'otp_status')  return reply_(otpStatus_(q));
@@ -430,8 +431,15 @@ function saveVisit_(v){
     if (hasQuiz) sh.getRange(found, 16, 1, VISIT_QUIZ.length).setValues([VISIT_QUIZ.map(function(k){ return quizVal_(v[k]); })]);
     cid = clientId_(v.phone, v.name, true);
     var mg = findManager_(v.phone); mgr = mg ? mg.mgr : '';
+    var isVisitor = String(v.role || '') === 'Посетитель';   // деловой посетитель — не клиент, менеджера продаж не закрепляем
     if (mgr) { setAssigned_(v.phone, mgr); origin = 'Клиент из базы (вкладка «' + mg.tab + '»' + (mg.date ? ', с ' + mg.date : '') + ')'; }
-    else if (cid) {                                    // в «Офисе» нет — берём закреплённого или закрепляем нового по очереди
+    else if (v.pmgr && !isVisitor && !v.upBy) {        // менеджера выбрали на киоске (поле «Менеджер Себистон»)
+      var was = assignedMgr_(v.phone, false);
+      mgr = String(v.pmgr).trim();
+      if (!was) { setAssigned_(v.phone, mgr); assigned = true; }
+      origin = 'Менеджер выбран на киоске' + (was && was !== mgr ? ' (раньше был закреплён: ' + was + ')' : '');
+    }
+    else if (cid && !isVisitor) {                                    // в «Офисе» нет — берём закреплённого или закрепляем нового по очереди
       var before = assignedMgr_(v.phone, false);
       mgr = before || assignedMgr_(v.phone, !v.upBy);
       assigned = !before && !!mgr;
@@ -449,6 +457,15 @@ function saveVisit_(v){
   var visitNo = hist.length || 1;
   // новый визит с киоска (не правка на сайте) и у клиента есть менеджер — пишем менеджеру в Telegram
   if (isNew && !v.upBy && mgr) { try { notified = notifyManager_(mgr, v, cid, assigned, origin, hist, mg); } catch (e) {} }
+  else if (isNew && !v.upBy && String(v.role || '') === 'Посетитель') {       // посетитель — сообщение в общую группу
+    try { notified = tgSendMgr_('', '🚶 <b>Посетитель в офисе</b>\n\n' +
+      '👤 ' + htmlEsc_(v.name || '—') + '\n📞 ' + htmlEsc_(v.phone || '—') + '\n' +
+      (v.office ? '📍 ' + htmlEsc_(v.office) + '\n' : '') +
+      (v.goal ? '🎯 ' + htmlEsc_(v.goal) + '\n' : '') +
+      (v.company ? '🏢 ' + htmlEsc_(v.company) + '\n' : '') +
+      (v.dept ? '➡️ К кому: <b>' + htmlEsc_(v.dept) + '</b>' + (v.whom ? ' — ' + htmlEsc_(v.whom) : '') + '\n' : '') +
+      (visitNo > 1 ? '📊 Визит №' + visitNo + '\n' : '')); } catch (e) {}
+  }
   return { ok:true, id:String(v.id || ''), clientId: cid, manager: mgr, assigned: assigned, notified: notified, visitNo: visitNo };
 }
 
@@ -757,13 +774,14 @@ function notifyManager_(mgr, v, cid, isNewClient, origin, hist, office){
     (v.goal ? '🎯 ' + htmlEsc_(v.goal) + '\n' : '') +
     (v.dept ? '➡️ Направить: <b>' + htmlEsc_(v.dept) + '</b>' + (v.whom ? ' — ' + htmlEsc_(v.whom) : '') + '\n' : '') +
     (jk ? '🏠 ' + htmlEsc_(jk) + '\n' : '') +
+    (v.agency ? '🏢 Агентство: ' + htmlEsc_(v.agency) + '\n' : '') +
     '\n' + historyText_(hist || [], String(v.id || '')) +
     dealsText_(v.phone) +
     (office && (office.topic || office.stage || office.decision) ? '📁 В «' + office.tab + '» (' + dmy_(office.date) + '): ' +
       [office.topic, office.stage, office.decision].filter(Boolean).map(htmlEsc_).join(' · ') + '\n' : '') +
     '\n📌 ' + htmlEsc_(origin || 'Менеджер клиента') + '\n' +
     '👔 <b>Менеджер: </b>' + tag + '\n\nВстретьте, пожалуйста, клиента.' +
-    (String(v.role || '') === 'Покупатель' ? '\n\n📝 <a href="' + htmlEsc_(anketaLink_(v.name, v.phone, v.id, v)) + '">Анкета о квартире</a> — заполните с клиентом или перешлите ему ссылку' : '');
+    ((String(v.role || '') === 'Покупатель' || (String(v.role || '') === 'Клиент' && /недвиж/i.test(String(v.goal || '')))) ? '\n\n📝 <a href="' + htmlEsc_(anketaLink_(v.name, v.phone, v.id, v)) + '">Анкета о квартире</a> — заполните с клиентом или перешлите ему ссылку' : '');
   return tgSendMgr_(mgr, text);
 }
 function tgSaveChats_(o){ PropertiesService.getScriptProperties().setProperty('TG_CHATS', JSON.stringify(o)); }

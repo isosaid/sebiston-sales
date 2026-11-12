@@ -1343,18 +1343,21 @@ window.sbLogout=function(){
 
 function initVisits(root){
   /* словарь киоска — чтобы поля в приложении совпадали с /visit/ */
-  var VIS_ROLES=["Покупатель","Клиент","Брокер","Партнёр"];
+  var VIS_ROLES=["Клиент","Брокер","Посетитель","Покупатель","Партнёр"];   // киоск: Брокер / Клиент / Посетитель; «Покупатель» и «Партнёр» — старые визиты
   var VIS_MODES=["первый визит","уже зарегистрирован"];
   var VIS_JK=["Бульвар Скандинавия","ADDRESS Residence","Varzob Riviera","GissarMall","Ахрори"];
   var VIS_OFFICES=["Головной офис","Офис продаж","Офис 92","Офис 112"];
   var VIS_DIRS=["Спортивное партнёрство","Медиа и информационное партнерство","Коммерческое сотрудничество","Подрядчик или поставщик","Инвестиционное сотрудничество"];
   var VIS_GOAL_LIST=["Недвижимость","Внести оплату","Сверить платежи","Оформить договор","Получить ключи","Заявка по гарантии","Вопрос по дому","Встреча с сотрудником","Помогите выбрать"];
-  var VIS_GOALS={"Покупатель":VIS_GOAL_LIST,"Клиент":VIS_GOAL_LIST,"Брокер":VIS_GOAL_LIST,"Партнёр":VIS_GOAL_LIST};
+  var VIS_GOALS={"Покупатель":VIS_GOAL_LIST,"Партнёр":VIS_GOAL_LIST,
+    "Клиент":["Покупка недвижимости","Оплата","Договор и документы","Получение ключей"].concat(VIS_GOAL_LIST),
+    "Брокер":["Показ с покупателем","Бронирование квартиры","Оформление сделки","Уточнить наличие и цены","Условия сотрудничества","Встреча с менеджером"],
+    "Посетитель":["Деловая встреча","Партнёрство и сотрудничество","Поставка, подряд","Собеседование","Доставка, курьер","Другое"]};
   /* куда киоск направил посетителя — по цели визита */
   var VIS_DEPTS=["Отдел продаж","Касса","Бухгалтерия","Оформление договоров","Приёмка квартир и выдача ключей","Гарантийная служба","Управляющая компания «Себистон Сервис»","Администратор ресепшена"];
   /* если отдел не пришёл из базы — определяем по цели визита (как подсказывает киоск) */
-  var DEPT_BY_GOAL=[[/оплат/i,1],[/сверить|платеж|платёж|график/i,2],[/договор|документ/i,3],[/ключ|приёмк|приемк/i,4],[/гарант/i,5],[/вопрос по дому|управляющ/i,6],[/сотрудник|встреч/i,7],
-    [/недвиж|квартир|выбрать|подобр|покупк|налич|клиент|строит/i,0]];
+  var DEPT_BY_GOAL=[[/^оплата$|оплат/i,1],[/сверить|платеж|платёж|график/i,2],[/договор|документ/i,3],[/ключ|приёмк|приемк/i,4],[/гарант/i,5],[/вопрос по дому|управляющ/i,6],[/сотрудник|встреч/i,7],
+    [/недвиж|квартир|выбрать|подобр|покупк|налич|клиент|строит|показ|брон|сделк/i,0]];
   function deptOf(goal){ goal=String(goal||""); if(!goal) return ""; for(var i=0;i<DEPT_BY_GOAL.length;i++) if(DEPT_BY_GOAL[i][0].test(goal)) return VIS_DEPTS[DEPT_BY_GOAL[i][1]]; return ""; }
   function visAllGoals(){ var s=[]; Object.keys(VIS_GOALS).forEach(function(r){ VIS_GOALS[r].forEach(function(g){ if(s.indexOf(g)<0) s.push(g); }); }); return s; }
 
@@ -1609,7 +1612,7 @@ function initVisits(root){
   }
   /* ---------- клиентская база: карточки клиентов в колонках ---------- */
   var VIEW=lsGet("sb_vis_view")||"cards", GROUP=lsGet("sb_vis_group")||"heat";
-  var ROLE_C={"Покупатель":"green","Клиент":"blue","Брокер":"orange","Партнёр":"violet"};
+  var ROLE_C={"Покупатель":"green","Клиент":"blue","Брокер":"orange","Партнёр":"violet","Посетитель":"gray"};
   var HEAT=[["new","Новые клиенты","НОВЫЙ КЛИЕНТ","blue"],["rep","Повторные визиты","ПОВТОРНЫЙ ВИЗИТ","green"],["often","Частые гости","ЧАСТЫЙ ГОСТЬ","orange"],["vip","Постоянные (5+)","ПОСТОЯННЫЙ КЛИЕНТ","red"]];
   function heatOf(n){ return n>=5?HEAT[3]:n>=3?HEAT[2]:n===2?HEAT[1]:HEAT[0]; }
   var STAGE_C={"Горячий":"red","Потенциальный":"blue","Думает":"yellow","Отказ":"gray"};
@@ -1633,7 +1636,8 @@ function initVisits(root){
     var cols=[], by={};
     function col(key,title,color){ if(!by[key]){ by[key]={key:key,title:title,color:color,items:[]}; cols.push(by[key]); } return by[key]; }
     if(GROUP==="heat") HEAT.forEach(function(h){ col(h[0],h[1],h[3]); });
-    if(GROUP==="role") ["Покупатель","Клиент","Брокер","Партнёр"].forEach(function(r){ col(r,{"Покупатель":"Покупатели","Клиент":"Клиенты","Брокер":"Брокеры","Партнёр":"Партнёры"}[r],ROLE_C[r]); });
+    if(GROUP==="role") ["Клиент","Брокер","Посетитель"].concat(["Покупатель","Партнёр"].filter(function(r){ return ROWS.some(function(v){ return v.role===r; }); }))
+      .forEach(function(r){ col(r,{"Покупатель":"Покупатели","Клиент":"Клиенты","Брокер":"Брокеры","Партнёр":"Партнёры","Посетитель":"Посетители"}[r],ROLE_C[r]); });
     list.forEach(function(c){
       if(GROUP==="heat") by[heatOf(c.n)[0]].items.push(c);
       else if(GROUP==="role") col(c.last.role||"—",c.last.role||"Без роли","gray").items.push(c);
@@ -1704,10 +1708,11 @@ function initVisits(root){
     var nd=Object.keys(days).length;
     f(root,"stats").innerHTML=
       '<div class="stat"><div class="n">'+rr.length+'</div><div class="t">визитов</div></div>'+
-      '<div class="stat"><div class="n">'+(byRole["Покупатель"]||0)+'</div><div class="t">покупателей</div></div>'+
       '<div class="stat"><div class="n">'+(byRole["Клиент"]||0)+'</div><div class="t">клиентов</div></div>'+
       '<div class="stat"><div class="n">'+(byRole["Брокер"]||0)+'</div><div class="t">брокеров</div></div>'+
-      '<div class="stat"><div class="n">'+(byRole["Партнёр"]||0)+'</div><div class="t">партнёров</div></div>'+
+      '<div class="stat"><div class="n">'+(byRole["Посетитель"]||0)+'</div><div class="t">посетителей</div></div>'+
+      (byRole["Покупатель"]?'<div class="stat"><div class="n">'+byRole["Покупатель"]+'</div><div class="t">покупателей</div></div>':'')+
+      (byRole["Партнёр"]?'<div class="stat"><div class="n">'+byRole["Партнёр"]+'</div><div class="t">партнёров</div></div>':'')+
       '<div class="stat money"><div class="n">'+first+'</div><div class="t">новых клиентов</div></div>'+
       '<div class="stat hot"><div class="n">'+(rr.length-first)+'</div><div class="t">повторных визитов</div></div>'+
       '<div class="stat"><div class="n">'+quiz+'</div><div class="t">заполнили анкету</div></div>'+
@@ -1779,7 +1784,7 @@ function initVisits(root){
               fld("Что сделал / цель визита", v.goal?'<b>'+esc(v.goal)+'</b>':'') +
               fld("Куда направили", v.dept?esc(v.dept)+(v.whom?' — <b>'+esc(v.whom)+'</b>':''):'') +
               fld("Интересующие ЖК", esc(v.jk||"")) +
-              (v.role==="Брокер"?fld("Агентство",esc(v.agency||"")):(v.role==="Партнёр"?fld("Компания · направление",[v.company,v.dir].filter(Boolean).map(esc).join(" · ")):"")) +
+              (v.role==="Брокер"?fld("Агентство",esc(v.agency||"")):(v.role==="Посетитель"?fld("Организация",esc(v.company||"")):v.role==="Партнёр"?fld("Компания · направление",[v.company,v.dir].filter(Boolean).map(esc).join(" · ")):"")) +
               offF+noteF+
               (v.sale?fld(v.sale==="Бронь"?"Бронь на этом визите":"Продажа на этом визите", '<b>'+esc(saleLine(v))+'</b>'+(v.stotal?' · '+esc(money(num(v.stotal))):'')):'')+
             '</div>'+quizBlock(v)+'</section>';
