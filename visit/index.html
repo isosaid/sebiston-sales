@@ -457,6 +457,7 @@ html.m .lang,html.m .lang.ru,html.m .lang.tg,html.m .lang.en{font-size:15px}
 html.m .lsep{font-size:15px}
 .lang.en{position:static;width:auto;height:auto;background:none;border-radius:0;padding:6px 0 7px;color:#1b1b1b;font-family:Montserrat,Inter,sans-serif;font-weight:700;line-height:26px;letter-spacing:-.2px;border-bottom:3px solid transparent}
 .lang.en.on{color:var(--g);border-bottom-color:var(--g)}
+#vk{display:none!important}
 </style>
 </head>
 <body>
@@ -1242,7 +1243,7 @@ let vkLayer="ru", vkShift=true, vkPrevAlpha="ru";
 const KB_FORCE=(()=>{ const m=location.search.match(/[?&]kb=([01])/); if(m){ try{ localStorage.setItem("sebiston_kb",m[1]); }catch(e){} return m[1]; } try{ return localStorage.getItem("sebiston_kb"); }catch(e){ return null; } })();
 const isTouch=()=>matchMedia("(pointer:coarse)").matches||matchMedia("(any-pointer:coarse)").matches||(navigator.maxTouchPoints||0)>0||("ontouchstart" in window);
 /* своя клавиатура выключена: ввод обычной (системной) клавиатурой. Вернуть — открыть с ?kb=1 */
-const useVK=()=>!isM() && KB_FORCE==="1";
+const useVK=()=>false;   // экранные клавиатуры (буквы и цифры) убраны полностью
 function vkFor(el){ if(!el) return "ru"; if(el.id==="i_phone"||el.id==="i_code") return "num"; if(el.id==="i_email") return "en"; return lang==="tg"?"tj":lang==="en"?"en":"ru"; }
 function vkRender(){ const k=$("#vk"); const rows=VK[vkLayer]; k.classList.toggle("num",vkLayer==="num");
   k.innerHTML=rows.map(r=>'<div class="r">'+r.split(" ").map(c=>{
