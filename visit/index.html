@@ -780,7 +780,7 @@ let profile=null, otpReq=null, otpMsg="", otpBad=false, otpTimer=null;
 function stopOtpPoll(){ if(otpTimer){ clearInterval(otpTimer); otpTimer=null; } }
 let lang="ru", role="client", mode="new", verified=false, codeSent=false, tried=false;
 let data={};
-const reset=()=>{data={name:"",phone:"",email:"",agency:"",company:"",code:"",jk:[],goal:null,dir:null,dept:null,deptAuto:false,whom:"",mgr:null,ptype:null,quiz:{district:[],rooms:[],area:[],floor:[],source:[]}};verified=false;codeSent=false;tried=false;profile=null;otpReq=null;otpMsg="";otpBad=false;stopOtpPoll();};
+const reset=()=>{data={name:"",phone:"",email:"",agency:"",company:"",code:"",jk:[],goal:null,dir:null,dept:null,deptAuto:false,whom:"",mgr:null,mgrText:"",ptype:null,quiz:{district:[],rooms:[],area:[],floor:[],source:[]}};verified=false;codeSent=false;tried=false;profile=null;otpReq=null;otpMsg="";otpBad=false;stopOtpPoll();};
 reset();
 const t=k=>T[lang][k];
 const esc=s=>String(s).replace(/[&<>"]/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;'}[c]));
@@ -818,7 +818,7 @@ function phoneBox(f,off){
   return `<div class="box phone${off}${bad(f.k)}" style="left:${f.x}px;top:${f.inp}px;width:${f.w}px">
     <span class="pre">+992</span>
     <span class="mask${data.phone?" has":""}" id="phMask">${maskHTML(data.phone)}</span>
-    <input id="i_phone" type="tel" inputmode="numeric" maxlength="20" autocomplete="off" placeholder="90 123 45 67" value="${esc(digits(data.phone))}" aria-label="${t("phone")}: +992"></div>`;
+    <input id="i_f3" type="tel" inputmode="numeric" maxlength="20" autocomplete="off" placeholder="90 123 45 67" value="${esc(digits(data.phone))}" aria-label="${t("phone")}: +992"></div>`;
 }
 function bad(k){
   if(!tried) return "";
@@ -834,19 +834,19 @@ function field(f,locked){
   const st=`left:${f.x}px;top:${f.inp}px;width:${f.w}px;height:${f.h}px`;
   const inp=(id,val,ph,type="text",extra="")=>`<div class="box${off}${bad(f.k)} ${extra}" style="${st}"><input id="${id}" type="${type}" autocomplete="off" placeholder="${esc(ph)}" value="${esc(val)}"></div>`;
   switch(f.k){
-    case "name": h+=inp("i_name",data.name,t("name_ph")); break;
-    case "email": h+=inp("i_email",data.email,role==="buyer"?t("email_ph"):(emailNeed()?t("email_ph2"):t("email_opt")),"text").replace("<input ","<input inputmode=\"email\" autocapitalize=\"off\" spellcheck=\"false\" "); break;
-    case "agency": h+=inp("i_agency",data.agency,t("agency_ph")); break;
-    case "company": h+=inp("i_company",data.company,t("company_ph")); break;
-    case "whom": h+=inp("i_whom",data.whom,t("whom_ph")); break;
-    case "org": h+=inp("i_company",data.company,t("org_ph")); break;
+    case "name": h+=inp("i_f1",data.name,t("name_ph")); break;
+    case "email": h+=inp("i_f2",data.email,role==="buyer"?t("email_ph"):(emailNeed()?t("email_ph2"):t("email_opt")),"text").replace("<input ","<input inputmode=\"email\" autocapitalize=\"off\" spellcheck=\"false\" "); break;
+    case "agency": h+=inp("i_f4",data.agency,t("agency_ph")); break;
+    case "company": h+=inp("i_f5",data.company,t("company_ph")); break;
+    case "whom": h+=inp("i_f6",data.whom,t("whom_ph")); break;
+    case "org": h+=inp("i_f5",data.company,t("org_ph")); break;
     case "phone": case "vphone": h+=phoneBox(f,off); break;
     case "code": h+=`<div class="box code" style="${st}"><input id="i_code" type="text" inputmode="numeric" autocomplete="one-time-code" maxlength="4" placeholder="••••" value="${esc(data.code)}"></div>`; break;
     case "dept": {
       const on=data.dept!=null;
       if(on && data.dept===RECEPTION && role!=="buyer"){
         h+=`<div class="box tip on whom" style="${st}"><span class="ic">➜</span><span class="tx"><b>${esc(T[lang].depts[data.dept])}</b>`+
-           `<input id="i_whom" type="text" autocomplete="off" placeholder="${t("whom")}: ${t("whom_ph").toLowerCase()}" value="${esc(data.whom)}"></span></div>`;
+           `<input id="i_f6" type="text" autocomplete="off" placeholder="${t("whom")}: ${t("whom_ph").toLowerCase()}" value="${esc(data.whom)}"></span></div>`;
         break;
       }
       h+=`<div class="box tip${on?" on":""}" style="${st}"><span class="ic">${on?"➜":"ℹ︎"}</span>`+
@@ -875,16 +875,18 @@ function render(){
     if(role!=="broker" && data.goal==null) data.goal=0;                 // клиент: «Покупка недвижимости», посетитель: «Деловая встреча»
     const CH='<svg class="chev" width="16" height="10" viewBox="0 0 16 10" fill="none"><path d="M1.5 1.5 8 8l6.5-6.5" stroke="#1b1b1b" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"/></svg>';
     const gb=ok=> tried&&!ok?" bad":"";
-    const gin=(id,val,ph,ok,at="")=>`<div class="gf${gb(ok)}"><input id="${id}" type="text" autocomplete="off" ${at} placeholder="${esc(ph)}" aria-label="${esc(ph)}" value="${esc(val)}"></div>`;
-    const gph=()=>`<div class="gf gphone${gb(phoneOk())}"><span class="pre">+992</span><span id="phMask" hidden></span><input id="i_phone" type="tel" inputmode="numeric" maxlength="20" autocomplete="off" placeholder="${esc(t("p_phone"))}" aria-label="${esc(t("p_phone"))}" value="${esc(digits(data.phone))}"></div>`;
+    const NOAF='autocomplete="off" autocorrect="off" spellcheck="false" data-lpignore="true" data-1p-ignore data-form-type="other"';   // без автозаполнения и подсказок браузера
+    const zw=x=>esc(String(x).replace(/(\S)(\S)/,"$1\u200c$2"));                 // невидимый разрыв: Safari не узнаёт «Имя», «почта», «телефон»
+    const gin=(id,val,ph,ok,at="")=>`<div class="gf${gb(ok)}"><input id="${id}" name="q-search-${id}" type="text" ${NOAF} ${at} placeholder="${zw(ph)}" value="${esc(val)}"></div>`;
+    const gph=()=>`<div class="gf gphone${gb(phoneOk())}"><span class="pre">+992</span><span id="phMask" hidden></span><input id="i_f3" name="q-search-i_f3" type="text" inputmode="numeric" maxlength="20" ${NOAF} placeholder="${zw(t("p_phone"))}" value="${esc(digits(data.phone))}"></div>`;
     const gsel=(k,lab,val,ok,pfx)=>`<button type="button" class="gf gsel${gb(ok)}" data-pick="${k}">`+(val?((pfx?`<span class="pfx">${esc(lab)}</span>`:"")+`<span class="v">${esc(val)}</span>`):`<span class="ph">${esc(lab)}</span>`)+CH+`</button>`;
     const TL=T[lang], gv=data.goal!=null?TL.goals[role][data.goal]:"", mv=data.mgr==null?"":data.mgr===0?t("mgr_any"):(MGRS[data.mgr-1]||"");
-    const nameF=gin("i_name",data.name,t("p_name"),data.name.trim().length>1), jkF=req=>gsel("jk",t("p_jk"),data.jk.join(", "),!req||data.jk.length>0);
+    const nameF=gin("i_f1",data.name,t("p_name"),data.name.trim().length>1), jkF=req=>gsel("jk",t("p_jk"),data.jk.join(", "),!req||data.jk.length>0);
     let f="";
-    if(role==="broker") f=nameF+gin("i_email",data.email,t("p_email"),mailOk(),'inputmode="email" autocapitalize="off" spellcheck="false"')+gph()+gsel("mgr",t("p_mgr_b"),mv,true)+
-        gin("i_agency",data.agency,t("p_agency"),!!data.agency.trim())+gsel("goal",t("p_goal"),gv,data.goal!=null,true)+jkF(true);
+    if(role==="broker") f=nameF+gin("i_f2",data.email,t("p_email"),mailOk(),'autocapitalize="off"')+gph()+gin("i_f7",data.mgrText,t("p_mgr_b"),true)+
+        gin("i_f4",data.agency,t("p_agency"),!!data.agency.trim())+gsel("goal",t("p_goal"),gv,data.goal!=null,true)+jkF(true);
     else if(role==="client") f=nameF+gph()+gsel("goal",t("p_goal"),gv,true,true)+gsel("ptype",t("p_ptype"),data.ptype!=null?TL.ptypes[data.ptype]:"",true)+jkF(false)+gsel("mgr",t("p_mgr_c"),mv,true);
-    else f=nameF+gph()+gin("i_company",data.company,t("p_org"),true)+gsel("goal",t("p_goal"),gv,true,true)+gsel("whomq",t("p_dept"),data.dept!=null?TL.depts[data.dept]:"",data.dept!=null)+gin("i_whom",data.whom,t("p_whom"),true);
+    else f=nameF+gph()+gin("i_f5",data.company,t("p_org"),true)+gsel("goal",t("p_goal"),gv,true,true)+gsel("whomq",t("p_dept"),data.dept!=null?TL.depts[data.dept]:"",data.dept!=null)+gin("i_f6",data.whom,t("p_whom"),true);
     h+=`<div class="flow f-${role}" id="flow">${f}</div>`;
   }
   for(const f of L.items){
@@ -955,13 +957,14 @@ function valid(){
 function bind(){
   const on=(id,fn)=>{const e=$(id); if(e) e.addEventListener("input",fn);};
   const clr=e=>{ const b=e.target.closest(".box,.gf"); if(b) b.classList.remove("bad"); };
-  on("#i_name",e=>{data.name=e.target.value;clr(e);});
-  on("#i_email",e=>{data.email=e.target.value;clr(e);});
-  on("#i_agency",e=>{data.agency=e.target.value;clr(e);});
-  on("#i_company",e=>{data.company=e.target.value;clr(e);});
-  on("#i_whom",e=>{data.whom=e.target.value;});
+  on("#i_f1",e=>{data.name=e.target.value;clr(e);});
+  on("#i_f2",e=>{data.email=e.target.value;clr(e);});
+  on("#i_f4",e=>{data.agency=e.target.value;clr(e);});
+  on("#i_f5",e=>{data.company=e.target.value;clr(e);});
+  on("#i_f6",e=>{data.whom=e.target.value;});
+  on("#i_f7",e=>{data.mgrText=e.target.value;});
   on("#i_code",e=>{data.code=e.target.value;clr(e);});
-  const ph=$("#i_phone");
+  const ph=$("#i_f3");
   if(ph){
     const toEnd=()=>{};   // обычное поле: курсор ставит сам человек
     ph.addEventListener("input",e=>{ if(codeSent&&!verified&&digits(ph.value)!==data.phone){ codeSent=false; otpReq=null; stopOtpPoll(); otpMsg=""; const vb2=$("#verify"); if(vb2) vb2.textContent=t("send_code"); const m=$("#otpMsg"); if(m) m.textContent=""; } data.phone=digits(ph.value); if(ph.value!==data.phone) ph.value=data.phone;
@@ -1065,6 +1068,8 @@ $("#lgForm").addEventListener("submit",e=>{ e.preventDefault();
   applyOffice(); goHome(); });
 if(/[?&]logout\b/.test(location.search)){ try{ localStorage.removeItem(OKEY); }catch(x){} }
 
+function mgrMatch(x){ x=String(x||"").trim().toLowerCase(); if(x.length<3) return "";
+  const m=MGRS.filter(n=>{ n=n.toLowerCase(); return n===x||n.startsWith(x)||x.startsWith(n)||n.split(/\s+/).includes(x); }); return m.length===1?m[0]:""; }
 function buildVisit(){
   const ru=T.ru, isReg = role!=="buyer" && (role==="client" || mode==="reg");
   const goal = data.goal!=null ? ru.goals[role][data.goal] : "";
@@ -1085,8 +1090,8 @@ function buildVisit(){
     v:{ id, at:new Date(now.getTime()-now.getTimezoneOffset()*60000).toISOString().slice(0,19), role:ROLE_RU[role], mode:modeTxt, name:who,   /* at — местное время киоска */
         phone:"+992"+digits(data.phone), email:data.email.trim(),
         jk:data.jk.slice(), goal, agency:data.agency.trim(), company:data.company.trim(), dir:(role==="client"&&data.ptype!=null)?ru.ptypes[data.ptype]:dir, lang:lang.toUpperCase(), office:getOffice(), acc:getOffice()?"admin("+getOffice()+")":"",
-        dept:deptNow()!=null?ru.depts[deptNow()]:"", whom:role==="visitor"?data.whom.trim():"",
-        pmgr:(role!=="visitor"&&data.mgr>0)?(MGRS[data.mgr-1]||""):"",
+        dept:deptNow()!=null?ru.depts[deptNow()]:"", whom:role==="visitor"?data.whom.trim():role==="broker"?data.mgrText.trim():"",
+        pmgr:role==="broker"?mgrMatch(data.mgrText):(role==="client"&&data.mgr>0)?(MGRS[data.mgr-1]||""):"",
         /* анкету киоск больше не отправляет — её заполняют по отдельной ссылке, ответы не затираются */ },
     fields:{ TITLE:"Визит в офис: "+ROLE_RU[role]+" — "+(who||phone), NAME:who,
       PHONE:[{VALUE:"+992"+digits(data.phone),VALUE_TYPE:"WORK"}],
@@ -1180,7 +1185,7 @@ function drawOkInfo(){
 
 /* ---------- navigation ---------- */
 function show(id){ $$(".screen").forEach(s=>s.classList.toggle("on",s.id===id)); if(id!=="form"){ const h=$("#swipeHint"); if(h){ h.classList.remove("on"); } } if(document.documentElement.classList.contains("m")) scrollTo(0,0); }
-$("#tabs").addEventListener("click",e=>{const b=e.target.closest("button");if(!b||b.dataset.role===role)return; role=b.dataset.role;mode="new";reset();render();});
+$("#tabs").addEventListener("click",e=>{const b=e.target.closest("button");if(!b||b.dataset.role===role)return; role=b.dataset.role;mode="new";reset();render();focusFirst();});
 $("#segs").addEventListener("click",e=>{const b=e.target.closest("button");if(!b||b.dataset.mode===mode)return; mode=b.dataset.mode;reset();render();});
 $("#submit").addEventListener("click",()=>{
   if($("#submit").classList.contains("dis")) return;
@@ -1189,8 +1194,9 @@ $("#submit").addEventListener("click",()=>{
   showDone(); });
 $("#finish").addEventListener("click",goHome);
 const isM=()=>document.documentElement.classList.contains("m");
+function focusFirst(){ if(isPh()) return; setTimeout(()=>{ const el=$("#i_f1"); if(el&&$("#form").classList.contains("on")&&!$("#login:not([hidden])")) try{ el.focus({preventScroll:true}); }catch(e){} },60); }
 const isPh=()=>document.documentElement.classList.contains("ph");   // phones open straight on the form
-function goHome(){ clearTimeout(doneT); clearTimeout(doneWaitT); doneId=null; doneInfo=null; reset(); role="client"; mode="new"; render(); show("form"); armAttract(); }
+function goHome(){ clearTimeout(doneT); clearTimeout(doneWaitT); doneId=null; doneInfo=null; reset(); role="client"; mode="new"; render(); show("form"); armAttract(); focusFirst(); }
 
 let idle=null;
 function bump(){ clearTimeout(idle); idle=setTimeout(()=>{ if($("#form").classList.contains("on")) goHome(); },90000); }
@@ -1324,7 +1330,7 @@ const KB_FORCE=(()=>{ const m=location.search.match(/[?&]kb=([01])/); if(m){ try
 const isTouch=()=>matchMedia("(pointer:coarse)").matches||matchMedia("(any-pointer:coarse)").matches||(navigator.maxTouchPoints||0)>0||("ontouchstart" in window);
 /* своя клавиатура выключена: ввод обычной (системной) клавиатурой. Вернуть — открыть с ?kb=1 */
 const useVK=()=>false;   // экранные клавиатуры (буквы и цифры) убраны полностью
-function vkFor(el){ if(!el) return "ru"; if(el.id==="i_phone"||el.id==="i_code") return "num"; if(el.id==="i_email") return "en"; return lang==="tg"?"tj":lang==="en"?"en":"ru"; }
+function vkFor(el){ if(!el) return "ru"; if(el.id==="i_f3"||el.id==="i_code") return "num"; if(el.id==="i_f2") return "en"; return lang==="tg"?"tj":lang==="en"?"en":"ru"; }
 function vkRender(){ const k=$("#vk"); const rows=VK[vkLayer]; k.classList.toggle("num",vkLayer==="num");
   k.innerHTML=rows.map(r=>'<div class="r">'+r.split(" ").map(c=>{
     let cls="", label=c;
@@ -1338,12 +1344,12 @@ function vkPlace(){ const k=$("#vk"), fr=$("#frame"); if(!k) return;
   const left=Math.max(0,sd.right+8), w=innerWidth-left-8;                      // под колонкой формы, фото слева остаётся видно
   k.style.left=left+"px"; k.style.width=w+"px"; k.style.height=Math.round(Math.min(360,Math.max(290,innerHeight*0.36)))+"px"; }
 function vkShow(el){ if(!useVK()) return; const k=$("#vk"); vkLayer=vkFor(el); vkPrevAlpha=vkLayer==="num"?vkPrevAlpha:vkLayer;
-  vkShift = el.id!=="i_email" && !el.value; vkPlace(); vkRender(); k.classList.add("on"); k.setAttribute("aria-hidden","false");
+  vkShift = el.id!=="i_f2" && !el.value; vkPlace(); vkRender(); k.classList.add("on"); k.setAttribute("aria-hidden","false");
   setTimeout(keepFocusedVisible,30); }
 function vkHide(){ const k=$("#vk"); if(!k) return; k.classList.remove("on"); k.setAttribute("aria-hidden","true"); }
 const vkOn=()=>{ const k=$("#vk"); return !!(k&&k.classList.contains("on")); };
 function vkInsert(el,txt){ const a=el.selectionStart??el.value.length, b=el.selectionEnd??a;
-  if(el.maxLength>0 && el.value.length-(b-a)+txt.length>el.maxLength && el.id!=="i_phone") return;
+  if(el.maxLength>0 && el.value.length-(b-a)+txt.length>el.maxLength && el.id!=="i_f3") return;
   el.setRangeText(txt,a,b,"end"); el.dispatchEvent(new Event("input",{bubbles:true})); }
 function vkBack(el){ let a=el.selectionStart??el.value.length, b=el.selectionEnd??a; if(a===b){ if(!a) return; a--; }
   el.setRangeText("",a,b,"end"); el.dispatchEvent(new Event("input",{bubbles:true})); }
@@ -1429,6 +1435,7 @@ if(window.visualViewport) visualViewport.addEventListener("resize",fit);
 fit(); setTimeout(fit,300);
 
 setLang("ru");
+setTimeout(focusFirst,400);
 
 /* ---------- как приложение: без адресной строки ---------- */
 (function(){
