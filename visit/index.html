@@ -466,6 +466,11 @@ html.m .lsep{font-size:15px}
 .phone input::selection{background:#bcd9c8!important}
 .flow .phone input{padding-left:72px!important}
 html.m .flow .phone input{padding-left:64px!important}
+/* заголовки вкладок («Регистрация брокера», «Визит клиента»…) убраны */
+#ttl,.h1{display:none!important}
+.flow{top:206px;height:658px;padding-top:36px}
+html.m .flow{height:auto;padding-top:0}
+html.m #body{padding-top:20px}
 </style>
 </head>
 <body>
@@ -736,7 +741,7 @@ const G=(lab,inp)=>[F("goal",lab,inp,501,394),F("dept",lab,inp,906,392)];   // �
 const RECEPTION=7;
 function layout(){
   /* все три вкладки — потоковая вёрстка (см. render): Брокер / Клиент / Посетитель */
-  return {card:[285,579],items:[],note:{y:882,k:"consent",c:1},locked:false,submitOff:false};
+  return {card:[212,652],items:[],note:{y:882,k:"consent",c:1},locked:false,submitOff:false};
 }
 const deptNow=()=> role==="client" ? (data.goal!=null?CL_DEPT[data.goal]:null) : role==="broker" ? (data.goal!=null?0:null) : data.dept;
 
