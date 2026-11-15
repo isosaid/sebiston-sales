@@ -1784,7 +1784,7 @@ function initVisits(root){
               fld("Что сделал / цель визита", v.goal?'<b>'+esc(v.goal)+'</b>':'') +
               fld("Куда направили", v.dept?esc(v.dept)+(v.whom?' — <b>'+esc(v.whom)+'</b>':''):'') +
               fld("Интересующие ЖК", esc(v.jk||"")) +
-              (v.role==="Брокер"?fld("Агентство",esc(v.agency||"")):(v.role==="Посетитель"?fld("Организация",esc(v.company||"")):v.role==="Партнёр"?fld("Компания · направление",[v.company,v.dir].filter(Boolean).map(esc).join(" · ")):"")) +
+              (v.role==="Клиент"&&v.dir?fld("Тип недвижимости",esc(v.dir)):"") + (v.role==="Посетитель"&&v.whom?"":"") + (v.role==="Брокер"?fld("Агентство",esc(v.agency||"")):(v.role==="Посетитель"?fld("Организация",esc(v.company||"")):v.role==="Партнёр"?fld("Компания · направление",[v.company,v.dir].filter(Boolean).map(esc).join(" · ")):"")) +
               offF+noteF+
               (v.sale?fld(v.sale==="Бронь"?"Бронь на этом визите":"Продажа на этом визите", '<b>'+esc(saleLine(v))+'</b>'+(v.stotal?' · '+esc(money(num(v.stotal))):'')):'')+
             '</div>'+quizBlock(v)+'</section>';
