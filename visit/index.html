@@ -458,6 +458,14 @@ html.m .lsep{font-size:15px}
 .lang.en{position:static;width:auto;height:auto;background:none;border-radius:0;padding:6px 0 7px;color:#1b1b1b;font-family:Montserrat,Inter,sans-serif;font-weight:700;line-height:26px;letter-spacing:-.2px;border-bottom:3px solid transparent}
 .lang.en.on{color:var(--g);border-bottom-color:var(--g)}
 #vk{display:none!important}
+
+/* телефон — обычное поле ввода, без маски */
+.phone .mask{display:none!important}
+.phone input{color:var(--ink)!important;-webkit-text-fill-color:var(--ink)!important;caret-color:auto!important;letter-spacing:.2px}
+.phone input::placeholder{color:var(--ph)!important;-webkit-text-fill-color:var(--ph)!important}
+.phone input::selection{background:#bcd9c8!important}
+.flow .phone input{padding-left:72px!important}
+html.m .flow .phone input{padding-left:64px!important}
 </style>
 </head>
 <body>
@@ -744,7 +752,7 @@ function phoneBox(f,off){
   return `<div class="box phone${off}${bad(f.k)}" style="left:${f.x}px;top:${f.inp}px;width:${f.w}px">
     <span class="pre">+992</span>
     <span class="mask${data.phone?" has":""}" id="phMask">${maskHTML(data.phone)}</span>
-    <input id="i_phone" type="tel" inputmode="numeric" maxlength="20" autocomplete="off" value="${esc(digits(data.phone))}" aria-label="${t("phone")}: +992"></div>`;
+    <input id="i_phone" type="tel" inputmode="numeric" maxlength="20" autocomplete="off" placeholder="90 123 45 67" value="${esc(digits(data.phone))}" aria-label="${t("phone")}: +992"></div>`;
 }
 function bad(k){
   if(!tried) return "";
@@ -884,7 +892,7 @@ function bind(){
   on("#i_code",e=>{data.code=e.target.value;clr(e);});
   const ph=$("#i_phone");
   if(ph){
-    const toEnd=()=>{ const n=ph.value.length; try{ ph.setSelectionRange(n,n); }catch(_){} };
+    const toEnd=()=>{};   // обычное поле: курсор ставит сам человек
     ph.addEventListener("input",e=>{ if(codeSent&&!verified&&digits(ph.value)!==data.phone){ codeSent=false; otpReq=null; stopOtpPoll(); otpMsg=""; const vb2=$("#verify"); if(vb2) vb2.textContent=t("send_code"); const m=$("#otpMsg"); if(m) m.textContent=""; } data.phone=digits(ph.value); if(ph.value!==data.phone) ph.value=data.phone;
       const m=$("#phMask"); m.innerHTML=maskHTML(data.phone); m.classList.toggle("has",!!data.phone); toEnd(); clr(e); });
     ["focus","click","keyup"].forEach(ev=>ph.addEventListener(ev,()=>setTimeout(toEnd,0)));
