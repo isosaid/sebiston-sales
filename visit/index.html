@@ -523,6 +523,10 @@ html.ph .gf{font-size:17px}
 html.ph .gf .pfx{font-size:15px;margin-right:12px}
 html.m #submit{display:block!important;width:100%!important;box-sizing:border-box;text-align:center;padding:0}
 html.m .langs{position:static!important;transform:none!important;left:auto!important;width:100%;justify-content:center!important}
+/* выпадающий список — рядом с полем */
+html.m #dd.pop{left:var(--l)!important;top:var(--t)!important;bottom:auto!important;right:auto!important;transform:none!important;width:var(--w)!important;max-height:var(--mh)!important;
+  border-radius:14px!important;padding-bottom:6px;box-shadow:0 18px 50px rgba(0,0,0,.45)}
+html.m #ddCatch{background:rgba(0,0,0,.25)}
 </style>
 </head>
 <body>
@@ -1020,6 +1024,11 @@ function openDD(k,anchor){
   const top = Math.max(10, Math.min((ar.top-wr.top)/sc, 1025-10-h));
   dd.style.left="500px"; dd.style.top=top+"px";
   dd.classList.add("on"); $("#ddCatch").classList.add("on");
+  { /* список открывается сразу под полем (если снизу мало места — над полем) */
+    const r=anchor.getBoundingClientRect(), vh=innerHeight, need=Math.min(dd.scrollHeight,520), below=vh-r.bottom-14, above=r.top-14;
+    const up = below<Math.min(need,240) && above>below, mh=Math.max(160,Math.min(520, up?above:below));
+    dd.classList.add("pop"); dd.style.setProperty("--l",r.left+"px"); dd.style.setProperty("--w",r.width+"px"); dd.style.setProperty("--mh",mh+"px");
+    dd.style.setProperty("--t",(up?Math.max(8,r.top-6-Math.min(need,mh)):r.bottom+6)+"px"); dd.scrollTop=0; }
   $("#ddOk").addEventListener("click",()=>{ if(headPick){ setGoal(0); } closeDD(); });
   $$("#dd .opt").forEach(b=>b.addEventListener("click",()=>{
     const i=+b.dataset.i;
