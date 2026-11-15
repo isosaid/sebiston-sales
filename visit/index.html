@@ -527,6 +527,16 @@ html.m .langs{position:static!important;transform:none!important;left:auto!impor
 html.m #dd.pop{left:var(--l)!important;top:var(--t)!important;bottom:auto!important;right:auto!important;transform:none!important;width:var(--w)!important;max-height:var(--mh)!important;
   border-radius:14px!important;padding-bottom:6px;box-shadow:0 18px 50px rgba(0,0,0,.45)}
 html.m #ddCatch{background:rgba(0,0,0,.25)}
+/* выбор офиса в метке слева внизу */
+#officeBar{flex-direction:column;align-items:flex-start;gap:8px}
+#officeTag{cursor:pointer;font-size:13px;padding:9px 13px}
+#officeTag.need{background:var(--g)}
+#officeOut{display:none!important}
+#officeMenu{display:flex;flex-direction:column;gap:4px;padding:6px;border-radius:14px;background:rgba(20,16,16,.82);-webkit-backdrop-filter:blur(10px);backdrop-filter:blur(10px);box-shadow:0 12px 34px rgba(0,0,0,.4)}
+#officeMenu[hidden]{display:none}
+#officeMenu button{all:unset;cursor:pointer;font:500 15px/1 Inter,sans-serif;color:#fff;padding:12px 16px;border-radius:9px;min-width:150px}
+#officeMenu button.on{background:var(--g);font-weight:700}
+#officeMenu button:active{background:rgba(255,255,255,.16)}
 </style>
 </head>
 <body>
@@ -545,7 +555,7 @@ html.m #ddCatch{background:rgba(0,0,0,.25)}
     <button class="lg-btn" type="submit">Войти</button>
   </form>
 </div>
-<div id="officeBar" hidden><span id="officeTag"></span><button type="button" id="officeOut">Выйти</button></div>
+<div id="officeBar"><div id="officeMenu" hidden></div><button type="button" id="officeTag" aria-haspopup="true"></button><button type="button" id="officeOut" hidden>Выйти</button></div>
 <div id="swipeHint" aria-hidden="true">↕ Проведите пальцем — другие поля</div>
 <div id="frame"><div id="stage">
 
@@ -1063,7 +1073,15 @@ function officeOfLogin(u){ const m=String(u||"").trim().toLowerCase().replace(/\
 function showLogin(){ const L=$("#login"); L.hidden=false; $("#officeBar").hidden=true;
   $("#lgOffices").innerHTML=OFFICES.map(o=>`<button type="button" data-o="${esc(o)}">${esc(o)}</button>`).join("");
   $("#lgUser").value=""; $("#lgPass").value=""; $("#lgErr").textContent=""; }
-function applyOffice(){ const o=getOffice(); $("#officeTag").textContent=o?"📍 "+o:""; $("#officeBar").hidden=!o; if(!o) showLogin(); else $("#login").hidden=true; }
+/* входа с логином и паролем больше нет: офис просто выбирается в метке слева внизу */
+function officeMenu(open){ const m=$("#officeMenu"); m.hidden=!open; if(!open) return;
+  m.innerHTML=OFFICES.map(o=>`<button type="button" data-o="${esc(o)}"${o===getOffice()?' class="on"':''}>${esc(o)}</button>`).join(""); }
+function applyOffice(){ const o=getOffice(); $("#login").hidden=true; $("#officeBar").hidden=false;
+  $("#officeTag").textContent="📍 "+(o||"Выберите офис")+" ▾"; $("#officeTag").classList.toggle("need",!o); if(!o) officeMenu(true); }
+$("#officeTag").addEventListener("click",e=>{ e.stopPropagation(); officeMenu($("#officeMenu").hidden); });
+$("#officeMenu").addEventListener("click",e=>{ const b=e.target.closest("[data-o]"); if(!b) return; e.stopPropagation();
+  try{ localStorage.setItem(OKEY,b.dataset.o); }catch(x){} officeMenu(false); applyOffice(); armAttract&&armAttract(); });
+document.addEventListener("click",e=>{ if(getOffice() && !e.target.closest("#officeBar")) officeMenu(false); });
 function logoutOffice(){ if(!confirm("Выйти из киоска «"+getOffice()+"»?")) return; try{ localStorage.removeItem(OKEY); }catch(x){} clearAttract&&clearAttract(); applyOffice(); }
 $("#officeOut").addEventListener("click",logoutOffice);
 $("#lgOffices").addEventListener("click",e=>{ const b=e.target.closest("[data-o]"); if(!b) return;
