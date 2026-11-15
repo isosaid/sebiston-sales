@@ -885,7 +885,7 @@ function render(){
     let f="";
     if(role==="broker") f=nameF+gin("i_f2",data.email,t("p_email"),mailOk(),'autocapitalize="off"')+gph()+gin("i_f7",data.mgrText,t("p_mgr_b"),true)+
         gin("i_f4",data.agency,t("p_agency"),!!data.agency.trim())+gsel("goal",t("p_goal"),gv,data.goal!=null,true)+jkF(true);
-    else if(role==="client") f=nameF+gph()+gsel("goal",t("p_goal"),gv,true,true)+gsel("ptype",t("p_ptype"),data.ptype!=null?TL.ptypes[data.ptype]:"",true)+jkF(false)+gsel("mgr",t("p_mgr_c"),mv,true);
+    else if(role==="client") f=nameF+gph()+gsel("goal",t("p_goal"),gv,true,true)+gsel("ptype",t("p_ptype"),data.ptype!=null?TL.ptypes[data.ptype]:"",true)+jkF(false)+gin("i_f7",data.mgrText,t("p_mgr_c"),true);
     else f=nameF+gph()+gin("i_f5",data.company,t("p_org"),true)+gsel("goal",t("p_goal"),gv,true,true)+gsel("whomq",t("p_dept"),data.dept!=null?TL.depts[data.dept]:"",data.dept!=null)+gin("i_f6",data.whom,t("p_whom"),true);
     h+=`<div class="flow f-${role}" id="flow">${f}</div>`;
   }
@@ -1090,8 +1090,8 @@ function buildVisit(){
     v:{ id, at:new Date(now.getTime()-now.getTimezoneOffset()*60000).toISOString().slice(0,19), role:ROLE_RU[role], mode:modeTxt, name:who,   /* at — местное время киоска */
         phone:"+992"+digits(data.phone), email:data.email.trim(),
         jk:data.jk.slice(), goal, agency:data.agency.trim(), company:data.company.trim(), dir:(role==="client"&&data.ptype!=null)?ru.ptypes[data.ptype]:dir, lang:lang.toUpperCase(), office:getOffice(), acc:getOffice()?"admin("+getOffice()+")":"",
-        dept:deptNow()!=null?ru.depts[deptNow()]:"", whom:role==="visitor"?data.whom.trim():role==="broker"?data.mgrText.trim():"",
-        pmgr:role==="broker"?mgrMatch(data.mgrText):(role==="client"&&data.mgr>0)?(MGRS[data.mgr-1]||""):"",
+        dept:deptNow()!=null?ru.depts[deptNow()]:"", whom:role==="visitor"?data.whom.trim():data.mgrText.trim(),
+        pmgr:role==="visitor"?"":mgrMatch(data.mgrText),
         /* анкету киоск больше не отправляет — её заполняют по отдельной ссылке, ответы не затираются */ },
     fields:{ TITLE:"Визит в офис: "+ROLE_RU[role]+" — "+(who||phone), NAME:who,
       PHONE:[{VALUE:"+992"+digits(data.phone),VALUE_TYPE:"WORK"}],
